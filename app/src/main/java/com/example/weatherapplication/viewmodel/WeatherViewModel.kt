@@ -50,5 +50,17 @@ class WeatherViewModel(
     fun selectCity(city: CitySearchItem) {
         _selectedCity.value = city
     }
+
+    fun getWeatherByCoordinates(lat: Double, lon: Double) {
+        viewModelScope.launch {
+            try {
+                val response = repository.getWeatherByCoordinates(lat, lon)
+                _weatherState.value = response
+            } catch (e: Exception) {
+                Log.e("WeatherViewModel", "Błąd podczas pobierania pogody po lokalizacji", e)
+            }
+        }
+    }
+
 }
 

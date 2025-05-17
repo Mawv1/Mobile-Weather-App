@@ -32,4 +32,9 @@ class WeatherRepository(
             )
         }
     }
+
+    suspend fun getWeatherByCoordinates(lat: Double, lon: Double): WeatherResponse {
+        return api.getWeatherByCoordinates(lat, lon, apiKey)
+    }
+
 }

@@ -59,3 +59,33 @@ fun WeatherInfoCard(weather: WeatherResponse) {
         }
     }
 }
+
+@Composable
+fun CurrentWeatherScreen(
+    lat: Double,
+    lon: Double,
+    navController: NavController,
+    viewModel: WeatherViewModel = viewModel()
+) {
+    LaunchedEffect(lat, lon) {
+        viewModel.getWeatherByCoordinates(lat, lon)
+    }
+
+    val weatherState by viewModel.weatherState.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Pogoda:", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        weatherState?.let { weather ->
+            WeatherInfoCard(weather)
+        } ?: Text("Brak danych pogodowych.")
+    }
+}
+

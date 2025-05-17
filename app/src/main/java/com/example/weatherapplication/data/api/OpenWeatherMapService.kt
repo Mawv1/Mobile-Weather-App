@@ -23,5 +23,14 @@ interface OpenWeatherMapService {
         @Query("limit") limit: Int = 10,
         @Query("appid") apiKey: String
     ): List<CitySearchApiModel>
+
+    @GET("data/2.5/weather")
+    suspend fun getWeatherByCoordinates(
+        @Query("lat") latitude: Double,
+        @Query("lon") longitude: Double,
+        @Query("appid") apiKey: String,
+        @Query("units") units: String = "metric"
+    ): WeatherResponse
+
 }
 
