@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.weatherapplication.data.model.CitySearchItem
 import com.example.weatherapplication.data.model.WeatherResponse
 import com.example.weatherapplication.data.repository.WeatherRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -21,7 +22,10 @@ class WeatherViewModel(
     private val _citySearchResults = MutableLiveData<List<CitySearchItem>>()
     val citySearchResults: LiveData<List<CitySearchItem>> = _citySearchResults
 
-    fun getWeatherForCity(city: String) {
+    private val _selectedCity = MutableLiveData<CitySearchItem?>()
+    val selectedCity: LiveData<CitySearchItem?> = _selectedCity
+
+    fun getWeatherForCity(city: CitySearchItem) {
         viewModelScope.launch {
             try {
                 val response = repository.getWeather(city)
@@ -34,12 +38,17 @@ class WeatherViewModel(
     fun searchCity(cityName: String) {
         viewModelScope.launch {
             try {
+                Log.d("WeatherViewModel", "Wyszukiwanie miasta: $cityName") // ← to
                 val results = repository.searchCitiesByName(cityName)
                 _citySearchResults.value = results
             } catch (e: Exception) {
                 Log.e("WeatherViewModel", "City search failed: ${e.message}")
             }
         }
+    }
+
+    fun selectCity(city: CitySearchItem) {
+        _selectedCity.value = city
     }
 }
 

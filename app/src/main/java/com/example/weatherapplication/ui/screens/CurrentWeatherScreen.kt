@@ -3,6 +3,7 @@ package com.example.weatherapplication.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -12,14 +13,20 @@ import androidx.navigation.NavController
 import com.example.weatherapplication.viewmodel.WeatherViewModel
 import com.example.weatherapplication.data.model.WeatherResponse
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.weatherapplication.data.model.CitySearchItem
 
 
 @Composable
 fun CurrentWeatherScreen(
+    city: CitySearchItem,
     navController: NavController,
     viewModel: WeatherViewModel = viewModel()
 ) {
-    val weather by viewModel.weatherState.collectAsState()
+    LaunchedEffect(city) {
+        viewModel.getWeatherForCity(city)
+    }
+
+    val weatherState by viewModel.weatherState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -28,18 +35,15 @@ fun CurrentWeatherScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Aktualna pogoda", style = MaterialTheme.typography.titleLarge)
+        Text("Aktualna pogoda dla $city", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (weather != null) {
-            WeatherInfoCard(weather!!)
-        } else {
-            Text("Brak danych pogodowych.")
-        }
+        weatherState?.let { weather ->
+            Text("Temperatura: ${weather.main.temp}°C")
+            Text("Opis: ${weather.weather.firstOrNull()?.description ?: "-"}")
+        } ?: Text("Brak danych pogodowych.")
     }
 }
-
-
 
 @Composable
 fun WeatherInfoCard(weather: WeatherResponse) {
