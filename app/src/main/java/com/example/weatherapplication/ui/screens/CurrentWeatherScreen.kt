@@ -5,6 +5,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -12,11 +14,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.weatherapplication.viewmodel.WeatherViewModel
 import com.example.weatherapplication.data.model.WeatherResponse
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.weatherapplication.R
 import com.example.weatherapplication.data.model.CitySearchItem
 import com.example.weatherapplication.ui.ForecastDayCard
 
@@ -45,7 +49,21 @@ fun CurrentWeatherScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         weatherState?.let { weather ->
-            WeatherInfoCard(weather)
+            WeatherInfoCard(
+                weather = weather,
+                onFavoriteClick = {
+                    viewModel.addToFavorites(
+                        CitySearchItem(
+                            name = weather.name,
+                            country = weather.sys.country,
+                            state = null, // jeśli nie masz danych
+                            lat = weather.coord.lat,
+                            lon = weather.coord.lon
+                        )
+                    )
+                }
+            )
+
         } ?: Text("Brak danych pogodowych.")
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -66,19 +84,58 @@ fun CurrentWeatherScreen(
 }
 
 @Composable
-fun WeatherInfoCard(weather: WeatherResponse) {
+fun WeatherInfoCard(
+    weather: WeatherResponse,
+    onFavoriteClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(6.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Miasto: ${weather.name}", style = MaterialTheme.typography.titleMedium)
-            Text("Temperatura: ${weather.main.temp}°C")
-            Text("Opis: ${weather.weather.firstOrNull()?.description ?: "Brak"}")
-            Text("Wiatr: ${weather.wind.speed} m/s")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+//                Icon(
+////                    painter = painterResource(id = getWeatherIcon(weather.weather.firstOrNull()?.icon)),
+////                    contentDescription = "Ikona pogody",
+//                    tint = MaterialTheme.colorScheme.primary,
+//                    modifier = Modifier.size(48.dp)
+//                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Miasto: ${weather.name}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            Text("Temperatura: ${weather.main.temp}°C", color = MaterialTheme.colorScheme.onBackground)
+            Text("Opis: ${weather.weather.firstOrNull()?.description ?: "Brak"}", color = MaterialTheme.colorScheme.onBackground)
+            Text("Wiatr: ${weather.wind.speed} m/s", color = MaterialTheme.colorScheme.onBackground)
+
+            IconButton(onClick = onFavoriteClick) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = "Zapisz jako ulubione",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
+
+//fun getWeatherIcon(iconCode: String?): Int {
+//    return when (iconCode) {
+//        "01d" -> R.drawable.ic_sunny
+//        "01n" -> R.drawable.ic_clear_night
+//        "02d", "02n" -> R.drawable.ic_partly_cloudy
+//        "03d", "03n", "04d", "04n" -> R.drawable.ic_cloudy
+//        "09d", "09n" -> R.drawable.ic_rain
+//        "10d", "10n" -> R.drawable.ic_rain_sun
+//        "11d", "11n" -> R.drawable.ic_thunderstorm
+//        "13d", "13n" -> R.drawable.ic_snow
+//        "50d", "50n" -> R.drawable.ic_fog
+//        else -> R.drawable.ic_unknown
+//    }
+//}
 
 @Composable
 fun CurrentWeatherScreen(
@@ -97,7 +154,7 @@ fun CurrentWeatherScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(start = 16.dp, top = 64.dp, end = 16.dp, bottom = 16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -105,14 +162,25 @@ fun CurrentWeatherScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         weatherState?.let { weather ->
-            WeatherInfoCard(weather)
+            WeatherInfoCard(
+                weather = weather,
+                onFavoriteClick = {
+                    viewModel.addToFavorites(
+                        CitySearchItem(
+                            name = weather.name,
+                            country = weather.sys.country,
+                            state = null,
+                            lat = weather.coord.lat,
+                            lon = weather.coord.lon
+                        )
+                    )
+                }
+            )
         } ?: Text("Brak danych pogodowych.")
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Text("Prognoza 5-dniowa", style = MaterialTheme.typography.headlineSmall)
-        Text("Liczba dni w prognozie: ${forecast.size}")
-
         LazyRow(modifier = Modifier.fillMaxWidth()) {
             items(forecast) { dayForecast ->
                 ForecastDayCard(forecast = dayForecast)

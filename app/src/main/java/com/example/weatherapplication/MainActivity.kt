@@ -13,12 +13,47 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.weatherapplication.data.local.AppDatabase
+import com.example.weatherapplication.data.local.NetworkMonitor
+import com.example.weatherapplication.data.repository.FavoritesRepository
+import com.example.weatherapplication.data.repository.WeatherRepository
 import com.example.weatherapplication.ui.theme.WeatherApplicationTheme
 import com.example.weatherapplication.ui.WeatherApp
+import com.example.weatherapplication.viewmodel.WeatherViewModelFactory
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var networkMonitor: NetworkMonitor
+    private lateinit var viewModelFactory: WeatherViewModelFactory
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Inicjalizacja NetworkMonitor
+        networkMonitor = NetworkMonitor(this)
+        networkMonitor.start()
+
+        // Inicjalizacja Moshi i bazy danych potrzebnej w repozytoriach
+        val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+        val db = AppDatabase.getInstance(applicationContext)
+        val cacheDao = db.weatherCacheDao()
+
+        // Inicjalizacja repozytoriów
+        val weatherRepository = WeatherRepository(
+            apiKey = BuildConfig.WEATHER_API_KEY,
+            cacheDao = cacheDao,
+            moshi = moshi
+        )
+        val favoritesRepository = FavoritesRepository(applicationContext, moshi)
+
+        // Tworzymy factory ViewModel z wszystkimi zależnościami
+        viewModelFactory = WeatherViewModelFactory(
+            repo = weatherRepository,
+            favoritesRepo = favoritesRepository,
+            networkMonitor = networkMonitor
+        )
 
         enableEdgeToEdge()
 
@@ -28,9 +63,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    WeatherApp()
+                    WeatherApp(viewModelFactory)
                 }
             }
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        networkMonitor.stop()
+    }
 }
+

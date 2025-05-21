@@ -8,10 +8,17 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
 @Composable
-fun SettingsScreen(navController: NavController) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(text = "Ustawienia", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(text = "Tutaj będą ustawienia użytkownika.")
+fun SettingsScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Top
+    ) {
+        Text("Ustawienia", style = MaterialTheme.typography.titleLarge)
+        Spacer(modifier = Modifier.height(16.dp))
+        // Dodaj tutaj opcje ustawień
+        Text("Opcja 1: ...")
+        Text("Opcja 2: ...")
     }
 }

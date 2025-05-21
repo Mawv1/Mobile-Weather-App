@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CitySearchScreen(
-    viewModel: WeatherViewModel = viewModel(),
+    viewModel: WeatherViewModel,
     onCitySelected: (CitySearchItem) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
