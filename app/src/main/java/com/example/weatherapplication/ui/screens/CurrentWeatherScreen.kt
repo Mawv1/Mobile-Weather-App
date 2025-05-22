@@ -1,5 +1,6 @@
 package com.example.weatherapplication.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -94,12 +95,11 @@ fun WeatherInfoCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-//                Icon(
-////                    painter = painterResource(id = getWeatherIcon(weather.weather.firstOrNull()?.icon)),
-////                    contentDescription = "Ikona pogody",
-//                    tint = MaterialTheme.colorScheme.primary,
-//                    modifier = Modifier.size(48.dp)
-//                )
+                Image(
+                    painter = painterResource(id = getWeatherIcon(weather.weather.firstOrNull()?.icon)),
+                    contentDescription = "Ikona pogody",
+                    modifier = Modifier.size(48.dp)
+                )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "Miasto: ${weather.name}",
@@ -122,20 +122,30 @@ fun WeatherInfoCard(
     }
 }
 
-//fun getWeatherIcon(iconCode: String?): Int {
-//    return when (iconCode) {
-//        "01d" -> R.drawable.ic_sunny
-//        "01n" -> R.drawable.ic_clear_night
-//        "02d", "02n" -> R.drawable.ic_partly_cloudy
-//        "03d", "03n", "04d", "04n" -> R.drawable.ic_cloudy
-//        "09d", "09n" -> R.drawable.ic_rain
-//        "10d", "10n" -> R.drawable.ic_rain_sun
-//        "11d", "11n" -> R.drawable.ic_thunderstorm
-//        "13d", "13n" -> R.drawable.ic_snow
-//        "50d", "50n" -> R.drawable.ic_fog
-//        else -> R.drawable.ic_unknown
-//    }
-//}
+fun getWeatherIcon(iconCode: String?): Int {
+    return when (iconCode) {
+        "01d" -> R.drawable.ic_01d // Słonecznie
+        "01n" -> R.drawable.ic_01n
+        "02d" -> R.drawable.ic_02d // Częściowe zachmurzenie
+        "02n" -> R.drawable.ic_02n
+        "03d" -> R.drawable.ic_03d // Zachmurzenie
+        "03n" -> R.drawable.ic_03n
+        "04d" -> R.drawable.ic_04d // Zachmurzenie mocniejsze
+        "04n" -> R.drawable.ic_04n
+        "09d" -> R.drawable.ic_09d // Deszcz
+        "09n" -> R.drawable.ic_09n
+        "10d" -> R.drawable.ic_10d // Deszcz
+        "10n" -> R.drawable.ic_10n
+        "11d" -> R.drawable.ic_11d // Burza
+        "11n" -> R.drawable.ic_11n
+        "13d" -> R.drawable.ic_13d // Śnieg
+        "13n" -> R.drawable.ic_13n
+        "50d" -> R.drawable.ic_50d // Mgła
+        "50n" -> R.drawable.ic_50n
+        // jakas standardowa ikona domyslna, nie mam takiej w drawable, uzyj czegos gotowego
+        else -> R.drawable.ic_03d
+    }
+}
 
 @Composable
 fun CurrentWeatherScreen(

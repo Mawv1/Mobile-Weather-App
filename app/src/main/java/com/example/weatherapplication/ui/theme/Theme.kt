@@ -18,15 +18,28 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = Pink80
 )
 
-val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF0D47A1),
-    onPrimary = Color.White,
-    background = Color(0xFFE3F2FD),
-    onBackground = Color(0xFF0D47A1),
-    surface = Color.White,
-    onSurface = Color(0xFF0D47A1),
-    outline = Color(0xFFB0BEC5)
+private val LightColorScheme = lightColorScheme(
+    primary = SkyBlue,
+    onPrimary = SnowWhite,
+    secondary = SunnyYellow,
+    onSecondary = SnowWhite,
+    background = CloudWhite,
+    onBackground = StormGray,
+    surface = SnowWhite,
+    onSurface = StormGray
 )
+
+@Composable
+fun WeatherApplicationTheme(
+    content: @Composable () -> Unit
+) {
+    MaterialTheme(
+        colorScheme = LightColorScheme,
+        typography = Typography,
+        shapes = Shapes,
+        content = content
+    )
+}
 
 @Composable
 fun WeatherApplicationTheme(

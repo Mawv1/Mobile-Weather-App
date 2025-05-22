@@ -16,6 +16,8 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.time.Instant
+import java.time.ZoneId
 
 class WeatherRepository(
     private val apiKey: String = BuildConfig.WEATHER_API_KEY,
@@ -77,11 +79,28 @@ class WeatherRepository(
      * Pobiera prognozę dniową za pomocą One Call API
      */
     suspend fun getForecastByCoordinates(lat: Double, lon: Double, days: Int): List<DailyForecast> {
-        Log.d("WeatherRepo", ">>> getForecast(lat=$lat, lon=$lon, days=$days)")
-        val response = api.getOneCallForecast(lat = lat, lon = lon, apiKey = apiKey)
-        Log.d("WeatherRepo", "<<< daily.size = ${'$'}{response.daily.size}")
-        return response.daily.take(days)
+        val response = api.getForecast(lat = lat, lon = lon, apiKey = apiKey)
+
+        // Grupujemy po dacie (yyyy-MM-dd)
+        val dailyGroups = response.list.groupBy { item ->
+            Instant.ofEpochSecond(item.dt)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+                .toString()
+        }
+
+        // Bierzemy maksymalnie `days` dni
+        return dailyGroups.entries.take(days).map { (date, items) ->
+            val avgTemp = items.map { it.main.temp }.average()
+            val icon = items.firstOrNull()?.weather?.firstOrNull()?.icon ?: "unknown"
+            DailyForecast(
+                date = date,
+                temperature = avgTemp,
+                weatherIconCode = icon
+            )
+        }
     }
+
 
     /**
      * Odświeża dane: pobiera z API i zapisuje do cache'u
