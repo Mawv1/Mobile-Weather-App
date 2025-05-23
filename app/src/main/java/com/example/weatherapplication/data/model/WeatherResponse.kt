@@ -8,10 +8,12 @@ import com.squareup.moshi.JsonClass
 data class WeatherResponse(
     val name: String,
     val coord: Coord,
-    val weather: List<Weather>,
     val main: Main,
     val wind: Wind,
-    val sys: Sys
+    val weather: List<Weather>,
+    val sys: Sys,
+    val clouds: Clouds,
+    val visibility: Int
 ) {
     fun toCitySearchItem(): CitySearchItem {
         return CitySearchItem(
@@ -35,10 +37,23 @@ data class Weather(
 )
 
 @JsonClass(generateAdapter = true)
-data class Main(val temp: Double)
+data class Main(
+    val temp: Double,
+    val pressure: Int,
+    val humidity: Int
+)
 
 @JsonClass(generateAdapter = true)
 data class Wind(val speed: Double, val deg: Int)
 
 @JsonClass(generateAdapter = true)
-data class Sys(val country: String)
+data class Sys(
+    val country: String,
+    val sunrise: Long,
+    val sunset: Long
+)
+
+@JsonClass(generateAdapter = true)
+data class Clouds(
+    val all: Int
+)

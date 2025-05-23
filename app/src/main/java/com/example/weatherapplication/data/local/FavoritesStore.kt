@@ -26,4 +26,10 @@ object FavoritesStore {
             prefs[KEY_FAVORITES] = json
         }
     }
+
+    suspend fun clearFavorites(context: Context) {
+        context.favoritesDataStore.edit { prefs ->
+            prefs.remove(KEY_FAVORITES)
+        }
+    }
 }

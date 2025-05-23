@@ -37,4 +37,8 @@ class FavoritesRepository(
         val updated = current.filterNot { it.lat == city.lat && it.lon == city.lon }
         FavoritesStore.saveRawFavorites(context, adapter.toJson(updated))
     }
+
+    suspend fun clearFavorites() {
+        FavoritesStore.clearFavorites(context)
+    }
 }

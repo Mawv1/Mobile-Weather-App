@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +35,8 @@ import com.example.weatherapplication.ui.composables.WeatherDisplay
 fun WeatherInfoCard(
     weather: WeatherResponse,
     units: String,
-    onFavoriteClick: () -> Unit
+    onFavoriteClick: () -> Unit,
+    isFavorite: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -54,24 +56,27 @@ fun WeatherInfoCard(
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
-            Text(
-                "Temperatura: ${weather.main.temp} ${if (units == "metric") "°C" else "°F"}",
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                "Opis: ${weather.weather.firstOrNull()?.description ?: "Brak"}",
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                "Wiatr: ${weather.wind.speed} ${if (units == "metric") "m/s" else "mph"}",
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            Text("Temperatura: ${weather.main.temp} ${if (units == "metric") "°C" else "°F"}")
+            Text("Opis: ${weather.weather.firstOrNull()?.description ?: "Brak"}")
+            Text("Wiatr: ${weather.wind.speed} ${if (units == "metric") "m/s" else "mph"}")
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ✅ DODATKOWE INFORMACJE
+            Text("Dodatkowe informacje:", style = MaterialTheme.typography.titleMedium)
+            Text("Ciśnienie: ${weather.main.pressure} hPa")
+            Text("Wilgotność: ${weather.main.humidity}%")
+            Text("Zachmurzenie: ${weather.clouds.all}%")
+            Text("Widoczność: ${weather.visibility / 1000.0} km")
+            Text("Wschód słońca: ${formatUnixTime(weather.sys.sunrise)}")
+            Text("Zachód słońca: ${formatUnixTime(weather.sys.sunset)}")
+
+            Spacer(modifier = Modifier.height(8.dp))
             IconButton(onClick = onFavoriteClick) {
                 Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = "Zapisz jako ulubione",
-                    tint = MaterialTheme.colorScheme.primary
+                    imageVector = if (isFavorite) Icons.Default.Star else Icons.Outlined.StarOutline,
+                    contentDescription = if (isFavorite) "Usuń z ulubionych" else "Dodaj do ulubionych",
+                    tint = if (isFavorite) Color.Yellow else MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -111,7 +116,6 @@ fun CurrentWeatherScreen(
 ) {
     val context = LocalContext.current
 
-    // Wywołaj pobranie pogody, gdy zmieniają się współrzędne
     LaunchedEffect(key1 = lat, key2 = lon) {
         Log.d("CurrentWeatherScreen", "Wywołanie getWeatherByCoordinates dla $lat, $lon")
         viewModel.getWeatherByCoordinates(lat, lon)
@@ -120,23 +124,8 @@ fun CurrentWeatherScreen(
     val weatherState by viewModel.weatherState.collectAsState()
     val forecast by viewModel.forecast.collectAsState()
     val units by viewModel.units.collectAsState()
-    val selectedCity by viewModel.selectedCity.observeAsState()
+    val favorites by viewModel.favorites.collectAsState()
     val showOfflineWarning by viewModel.showOfflineWarning.collectAsState()
-
-    // Aktualizuj pogodę po zmianie jednostek
-    LaunchedEffect(units) {
-        weatherState?.let {
-            viewModel.getWeatherByCoordinates(it.coord.lat, it.coord.lon)
-        }
-    }
-
-    // Ładuj dane pogodowe dla wybranego miasta (np. po wybraniu z listy)
-    LaunchedEffect(selectedCity) {
-        selectedCity?.let { city ->
-            Log.d("CurrentWeatherScreen", "Wywołanie loadWeather dla wybranego miasta: ${city.name}")
-            viewModel.loadWeather(city, context)
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -152,32 +141,49 @@ fun CurrentWeatherScreen(
                 modifier = Modifier.padding(8.dp)
             )
         } else {
-            Text(
-                text = "Pogoda dla lokalizacji: $lat, $lon",
-                style = MaterialTheme.typography.titleLarge
-            )
             Spacer(modifier = Modifier.height(16.dp))
 
             weatherState?.let { weather ->
+                val cityItem = CitySearchItem(
+                    name = weather.name,
+                    country = weather.sys.country,
+                    state = null,
+                    lat = weather.coord.lat,
+                    lon = weather.coord.lon
+                )
+
+                val isFavorite = favorites.any { fav ->
+                    fav.name == cityItem.name &&
+                            fav.lat == cityItem.lat &&
+                            fav.lon == cityItem.lon
+                }
+
                 WeatherDisplay(
                     weather = weather,
                     forecast = forecast,
                     units = units,
                     onFavoriteClick = {
-                        Log.d("CurrentWeatherScreen", "Kliknięto dodaj do ulubionych: ${weather.name}")
-                        viewModel.addToFavorites(
-                            CitySearchItem(
-                                name = weather.name,
-                                country = weather.sys.country,
-                                state = null,
-                                lat = weather.coord.lat,
-                                lon = weather.coord.lon
-                            )
-                        )
+                        if (isFavorite) {
+                            viewModel.removeFromFavorites(cityItem)
+                        } else {
+                            viewModel.addToFavorites(cityItem)
+                        }
                     },
-                    showOfflineWarning = showOfflineWarning
+                    showOfflineWarning = showOfflineWarning,
+                    isFavorite = isFavorite
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
             } ?: Text("Brak danych pogodowych.")
         }
     }
+}
+
+
+// Pomocnicza funkcja do formatowania czasu UNIX
+fun formatUnixTime(unixTime: Long): String {
+    val date = java.util.Date(unixTime * 1000)
+    val format = java.text.SimpleDateFormat("HH:mm")
+    format.timeZone = java.util.TimeZone.getDefault()
+    return format.format(date)
 }

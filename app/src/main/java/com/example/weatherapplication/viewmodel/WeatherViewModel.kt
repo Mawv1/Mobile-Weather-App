@@ -71,6 +71,9 @@ class WeatherViewModel(
     val favorites: StateFlow<List<CitySearchItem>> =
         favoritesRepo.favoritesFlow.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    private val _selectedFavoriteWeather = MutableStateFlow<WeatherResponse?>(null)
+    val selectedFavoriteWeather: StateFlow<WeatherResponse?> = _selectedFavoriteWeather
+
     // --- Sieć ---
     val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
     private val _showOfflineWarning = MutableStateFlow(false)
@@ -107,6 +110,14 @@ class WeatherViewModel(
         }
     }
 
+
+    fun getWeatherForSelectedFavorite(city: CitySearchItem) {
+        viewModelScope.launch {
+            val response = repository.getWeatherByCoordinates(city.lat, city.lon, _units.value)
+            _selectedFavoriteWeather.value = response
+        }
+    }
+
     fun searchCity(cityName: String) {
         viewModelScope.launch {
             try {
@@ -124,12 +135,18 @@ class WeatherViewModel(
         loadWeather(city, context)
     }
 
-    fun addToFavorites(city: CitySearchItem) = viewModelScope.launch {
-        favoritesRepo.addFavorite(city)
+    fun addToFavorites(city: CitySearchItem) {
+        viewModelScope.launch {
+            favoritesRepo.addFavorite(city)
+//            loadFavorites()
+        }
     }
 
-    fun removeFromFavorites(city: CitySearchItem) = viewModelScope.launch {
-        favoritesRepo.removeFavorite(city)
+    fun removeFromFavorites(city: CitySearchItem) {
+        viewModelScope.launch {
+            favoritesRepo.removeFavorite(city)
+//            loadFavorites()
+        }
     }
 
     override fun onCleared() {
@@ -219,4 +236,11 @@ class WeatherViewModel(
             }
         }
     }
+
+    fun clearFavorites() {
+        viewModelScope.launch {
+            favoritesRepo.clearFavorites()
+        }
+    }
+
 }

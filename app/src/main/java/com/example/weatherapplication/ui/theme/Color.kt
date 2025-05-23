@@ -17,7 +17,7 @@ val Teal200 = Color(0xFF03DAC5)
 
 val SunnyYellow = Color(0xFFFFEB3B)
 val SkyBlue = Color(0xFF03A9F4)
-val CloudWhite = Color(0xFFF5F5F5)
+val CloudWhite = Color(0xFFF3D6D6)
 val StormGray = Color(0xFF607D8B)
 val MistyGreen = Color(0xFF8BC34A)
 val SnowWhite = Color(0xFFFFFFFF)

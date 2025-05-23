@@ -17,7 +17,9 @@ import androidx.compose.ui.unit.dp
 import com.example.weatherapplication.data.model.DailyForecast
 import com.example.weatherapplication.data.model.WeatherResponse
 import com.example.weatherapplication.ui.ForecastDayCard
+import com.example.weatherapplication.ui.screens.AdditionalCityWeatherDetails
 import com.example.weatherapplication.ui.screens.WeatherInfoCard
+import com.example.weatherapplication.ui.screens.formatUnixTime
 
 @Composable
 fun WeatherDisplay(
@@ -25,36 +27,20 @@ fun WeatherDisplay(
     forecast: List<DailyForecast>,
     units: String,
     onFavoriteClick: () -> Unit,
-    showOfflineWarning: Boolean = false
+    showOfflineWarning: Boolean,
+    isFavorite: Boolean
 ) {
     Column {
-        if (showOfflineWarning) {
-            Text(
-                "Brak połączenia z internetem. Dane mogą być nieaktualne.",
-                color = Color.Red,
-                modifier = Modifier.padding(8.dp)
-            )
-        }
-        Log.e("WeatherDisplay", "Units: $units")
-//        Log.e("WeatherDisplay", "Current units: ${units}, ViewModel instance: ${weatherViewModel.hashCode()}")
-        WeatherInfoCard(weather = weather, units = units, onFavoriteClick = onFavoriteClick)
+        WeatherInfoCard(weather, units, onFavoriteClick, isFavorite)
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Prognoza 5-dniowa", style = MaterialTheme.typography.headlineSmall)
-        if (forecast.isNotEmpty()) {
-            LazyRow(modifier = Modifier.fillMaxWidth()) {
-                items(forecast) { dayForecast ->
-                    ForecastDayCard(forecast = dayForecast, units = units)
-                }
+        Text("Prognoza:", style = MaterialTheme.typography.titleMedium)
+
+        LazyRow {
+            items(forecast) { item ->
+                ForecastDayCard(forecast = item, units = units)
             }
-        } else {
-            Text(
-                "Brak dostępnych danych prognozy.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(8.dp)
-            )
         }
     }
 }
