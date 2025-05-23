@@ -12,7 +12,7 @@ interface OpenWeatherMapService {
     suspend fun getCurrentWeather(
         @Query("q") cityName: String,
         @Query("appid") apiKey: String,
-        @Query("units") units: String = "metric",
+        @Query("units") units: String,
         @Query("lang") lang: String = "pl",
         @Query("lat") lat: Double,
         @Query("lon") lon: Double
@@ -30,7 +30,9 @@ interface OpenWeatherMapService {
         @Query("lat") latitude: Double,
         @Query("lon") longitude: Double,
         @Query("appid") apiKey: String,
-        @Query("units") units: String = "metric"
+        @Query("exclude") exclude: String = "minutely,hourly,alerts",
+        @Query("lang") lang: String = "pl",
+        @Query("units") units: String
     ): WeatherResponse
 
 //    @GET("data/3.0/onecall")
@@ -48,9 +50,10 @@ interface OpenWeatherMapService {
         @Query("lat") lat: Double,
         @Query("lon") lon: Double,
         @Query("appid") apiKey: String,
-        @Query("units") units: String = "metric",
+        @Query("units") units: String,
         @Query("lang") lang: String = "pl",
-        @Query("exclude") exclude: String = "minutely,hourly,alerts,current"
+        @Query("exclude") exclude: String = "minutely,hourly,alerts,current",
+//        @Query("cnt") days: Int = 7
     ): ForecastResponse
 }
 

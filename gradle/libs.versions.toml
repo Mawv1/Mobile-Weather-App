@@ -12,6 +12,7 @@ runtimeLivedata = "1.8.1"
 playServicesLocation = "21.3.0"
 roomCommonJvm = "2.7.1"
 roomRuntimeAndroid = "2.7.1"
+benchmarkMacro = "1.3.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -34,6 +35,7 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 #androidx-room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "roomRuntimeAndroid" }
 androidx-room-runtime-android = "androidx.room:room-runtime:2.5.2"
 androidx-room-common-jvm = "androidx.room:room-common:2.5.2"
+androidx-benchmark-macro = { group = "androidx.benchmark", name = "benchmark-macro", version.ref = "benchmarkMacro" }
 
 [plugins]
 android-application = { id = "com.android.application", version = "8.2.0" }

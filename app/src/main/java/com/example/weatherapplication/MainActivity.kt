@@ -41,18 +41,22 @@ class MainActivity : ComponentActivity() {
         val cacheDao = db.weatherCacheDao()
 
         // Inicjalizacja repozytoriów
+        val favoritesRepository = FavoritesRepository(applicationContext, moshi)
+        val sharedPreferences = getSharedPreferences("weather_prefs", MODE_PRIVATE)
+
         val weatherRepository = WeatherRepository(
             apiKey = BuildConfig.WEATHER_API_KEY,
             cacheDao = cacheDao,
-            moshi = moshi
+            moshi = moshi,
+            sharedPreferences = sharedPreferences
         )
-        val favoritesRepository = FavoritesRepository(applicationContext, moshi)
 
         // Tworzymy factory ViewModel z wszystkimi zależnościami
         viewModelFactory = WeatherViewModelFactory(
             repo = weatherRepository,
             favoritesRepo = favoritesRepository,
-            networkMonitor = networkMonitor
+            networkMonitor = networkMonitor,
+            sharedPreferences = sharedPreferences
         )
 
         enableEdgeToEdge()
