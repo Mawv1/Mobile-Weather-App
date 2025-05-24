@@ -12,6 +12,8 @@ import com.example.weatherapplication.data.local.NetworkMonitor
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,6 +29,7 @@ class WeatherViewModel(
     init {
         Log.d("WeatherViewModel", "Instance created: ${this.hashCode()}")
         networkMonitor.start()
+        startAutoRefresh()
     }
 
     // --- Stany ---
@@ -57,8 +60,16 @@ class WeatherViewModel(
     }
 
     // --- Odświeżanie co X minut (np. dla automatycznego odświeżania danych) ---
-    private val _refreshInterval = MutableStateFlow(sharedPreferences.getInt("refresh_interval", 30))
-    val refreshInterval: StateFlow<Int> = _refreshInterval
+    private val _refreshInterval = MutableStateFlow(
+        try {
+            sharedPreferences.getInt("refresh_interval", 30).takeIf { it > 0 } ?: 30
+        } catch (e: Exception) {
+            Log.e("WeatherViewModel", "Failed to load refresh interval from prefs", e)
+            30
+        }
+    )
+//    val refreshInterval: StateFlow<Int> = _refreshInterval
+    private var autoRefreshJob: Job? = null
 
     fun setRefreshInterval(newInterval: Int) {
         Log.d("WeatherViewModel", "setRefreshInterval called with: $newInterval")
@@ -110,6 +121,28 @@ class WeatherViewModel(
         }
     }
 
+    fun startAutoRefresh() {
+        if (autoRefreshJob?.isActive == true) return
+
+        autoRefreshJob = viewModelScope.launch {
+            while (true) {
+                try {
+                    val intervalMinutes = _refreshInterval.value.takeIf { it > 0 } ?: 30
+                    Log.d("WeatherViewModel", "Auto-refresh every $intervalMinutes minutes")
+                    delay(intervalMinutes * 60 * 1000L)
+                    refreshWeather()
+                } catch (e: Exception) {
+                    Log.e("WeatherViewModel", "Error in auto-refresh loop", e)
+                    delay(30 * 60 * 1000L) // fallback delay
+                }
+            }
+        }
+    }
+
+    fun stopAutoRefresh() {
+        autoRefreshJob?.cancel()
+        autoRefreshJob = null
+    }
 
     fun getWeatherForSelectedFavorite(city: CitySearchItem) {
         viewModelScope.launch {
@@ -236,11 +269,4 @@ class WeatherViewModel(
             }
         }
     }
-
-    fun clearFavorites() {
-        viewModelScope.launch {
-            favoritesRepo.clearFavorites()
-        }
-    }
-
 }

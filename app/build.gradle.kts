@@ -100,4 +100,5 @@ dependencies {
     implementation("androidx.room:room-ktx:2.5.2")
 
     implementation ("androidx.compose.material:material-icons-extended")
+    implementation ("androidx.lifecycle:lifecycle-process:2.6.2")
 }

@@ -28,6 +28,6 @@ class SettingsViewModel(
 
     fun setRefreshInterval(newInterval: Int) {
         _refreshInterval.value = newInterval
-        // Tutaj można dodać logikę do WeatherViewModel, jeśli chcesz
+        weatherViewModel.setRefreshInterval(newInterval) // przekazanie do WeatherVM
     }
 }

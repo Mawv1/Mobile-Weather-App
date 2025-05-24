@@ -108,13 +108,6 @@ fun HomeWeatherScreen(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
-            IconButton(onClick = { navController.navigate("settings") }) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Ustawienia",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -186,13 +179,6 @@ fun HomeWeatherScreen(
 //
 //        Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = { navController.navigate("search") },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Text("Wyszukaj miasto", color = MaterialTheme.colorScheme.onPrimary)
-        }
     }
 }
 

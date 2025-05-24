@@ -87,9 +87,19 @@ class WeatherRepository(
         }
 
         return dailyGroups.entries.take(days).map { (date, items) ->
-            val avgTemp = items.map { it.main.temp }.average()
-            val icon = items.firstOrNull()?.weather?.firstOrNull()?.icon ?: "unknown"
-            DailyForecast(date, avgTemp, icon)
+            val averageTemp = items.map { it.main.temp }.average()
+            val minTemp = items.minOf { it.main.temp_min }
+            val maxTemp = items.maxOf { it.main.temp_max }
+            val weatherIconCode = items.firstOrNull()?.weather?.firstOrNull()?.icon ?: ""
+
+            DailyForecast(
+                date = date,
+                temperature = averageTemp,
+                minTemperature = minTemp,
+                maxTemperature = maxTemp,
+                weatherIconCode = weatherIconCode
+            )
+        }.sortedBy { it.date
         }
     }
 

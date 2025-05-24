@@ -56,7 +56,7 @@ fun WeatherInfoCard(
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
-            Text("Temperatura: ${weather.main.temp} ${if (units == "metric") "°C" else "°F"}")
+            Text("Temperatura: ${weather.main.temp} ${if (units == "metric") "°C" else if (units=="imperial") "°F" else "K"}")
             Text("Opis: ${weather.weather.firstOrNull()?.description ?: "Brak"}")
             Text("Wiatr: ${weather.wind.speed} ${if (units == "metric") "m/s" else "mph"}")
 

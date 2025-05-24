@@ -21,7 +21,7 @@ fun SettingsScreen(
     val selectedUnits by settingsViewModel.units
     val refreshInterval by settingsViewModel.refreshInterval
 
-    val unitOptions = listOf("metric", "imperial")
+    val unitOptions = listOf("metric", "imperial", "standard")
 
     Column(
         modifier = Modifier
@@ -49,18 +49,36 @@ fun SettingsScreen(
                             onRefreshWeatherClick()
                         }
                     )
-                    Text(text = if (unit == "metric") "Celsjusza (°C)" else "Fahrenheita (°F)")
+                    Text(text = if (unit == "metric") "Celsjusza (°C)" else if (unit=="imperial") "Fahrenheita (°F)" else "Kelwina (K)")
                 }
             }
         }
 
-        Button(
-            onClick = onRefreshWeatherClick,
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp)
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Odśwież pogodę")
+            Column {
+                Text("Interwał odświeżania (minuty)", style = MaterialTheme.typography.titleMedium)
+                Slider(
+                    value = refreshInterval.toFloat(),
+                    onValueChange = { settingsViewModel.setRefreshInterval(it.toInt()) },
+                    valueRange = 1f..60f,
+                    steps = 59
+                )
+                Text("Wybrany interwał: $refreshInterval minut")
+            }
+
+            Button(
+                onClick = onRefreshWeatherClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
+            ) {
+                Text("Odśwież pogodę")
+            }
         }
     }
 }

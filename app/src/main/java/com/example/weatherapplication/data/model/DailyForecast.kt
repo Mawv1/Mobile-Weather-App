@@ -32,6 +32,8 @@ data class WeatherDescription(
 data class DailyForecast(
     val date: String,          // np. "2025-05-22"
     val temperature: Double,   // średnia temperatura dnia lub temp w konkretnym czasie
+    val minTemperature: Double, // minimalna temperatura dnia
+    val maxTemperature: Double, // maksymalna temperatura dnia
     val weatherIconCode: String
 )
 

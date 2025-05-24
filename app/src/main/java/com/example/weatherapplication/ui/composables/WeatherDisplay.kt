@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.example.weatherapplication.data.model.DailyForecast
 import com.example.weatherapplication.data.model.WeatherResponse
 import com.example.weatherapplication.ui.ForecastDayCard
-import com.example.weatherapplication.ui.screens.AdditionalCityWeatherDetails
+//import com.example.weatherapplication.ui.screens.AdditionalCityWeatherDetails
 import com.example.weatherapplication.ui.screens.WeatherInfoCard
 import com.example.weatherapplication.ui.screens.formatUnixTime
 

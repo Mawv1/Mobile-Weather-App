@@ -5,20 +5,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.weatherapplication.data.local.AppDatabase
 import com.example.weatherapplication.data.local.NetworkMonitor
 import com.example.weatherapplication.data.repository.FavoritesRepository
 import com.example.weatherapplication.data.repository.WeatherRepository
+import com.example.weatherapplication.ui.screens.WeatherAppScaffold
 import com.example.weatherapplication.ui.theme.WeatherApplicationTheme
-import com.example.weatherapplication.ui.WeatherApp
 import com.example.weatherapplication.viewmodel.WeatherViewModelFactory
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -35,7 +30,7 @@ class MainActivity : ComponentActivity() {
         networkMonitor = NetworkMonitor(this)
         networkMonitor.start()
 
-        // Inicjalizacja Moshi i bazy danych potrzebnej w repozytoriach
+        // Inicjalizacja Moshi i bazy danych
         val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
         val db = AppDatabase.getInstance(applicationContext)
         val cacheDao = db.weatherCacheDao()
@@ -51,7 +46,7 @@ class MainActivity : ComponentActivity() {
             sharedPreferences = sharedPreferences
         )
 
-        // Tworzymy factory ViewModel z wszystkimi zależnościami
+        // ViewModel factory z zależnościami
         viewModelFactory = WeatherViewModelFactory(
             repo = weatherRepository,
             favoritesRepo = favoritesRepository,
@@ -67,7 +62,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    WeatherApp(viewModelFactory)
+                    WeatherAppScaffold(viewModelFactory = viewModelFactory) // <- to jest Twój główny ekran z bottom navigation
                 }
             }
         }
@@ -78,4 +73,3 @@ class MainActivity : ComponentActivity() {
         networkMonitor.stop()
     }
 }
-
