@@ -30,8 +30,10 @@ import com.google.android.gms.location.LocationServices
 
 @Composable
 fun HomeWeatherScreen(
-    navController: NavController,
-    viewModel: WeatherViewModel
+    navController: NavController?,
+    viewModel: WeatherViewModel,
+    onCityClear: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -48,33 +50,41 @@ fun HomeWeatherScreen(
         permissionGranted = granted
     }
 
+    var selectedCity by remember { mutableStateOf<CitySearchItem?>(null) }
+    var locationCity by remember { mutableStateOf<CitySearchItem?>(null) }
+
     LaunchedEffect(Unit) {
         if (!permissionGranted) {
             launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
-//        viewModel.clearFavorites()
     }
 
+    // Ustaw lokalizację tylko jeśli selectedCity jest null (czyli nie wybrano miasta z ulubionych/wyszukiwania)
     LaunchedEffect(permissionGranted) {
-        if (permissionGranted) {
-            try {
-                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    location?.let {
-                        val city = CitySearchItem(
-                            name = "Moja lokalizacja",
-                            country = "",
-                            state = null,
-                            lat = it.latitude,
-                            lon = it.longitude
-                        )
-                        Log.d("HomeWeatherScreen", "Ustawiam selectedCity na ${city.lat}, ${city.lon}")
-                        viewModel.setSelectedCity(city)
-                        viewModel.getWeatherByCoordinates(city.lat, city.lon)
-                    }
+        if (permissionGranted && selectedCity == null) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                location?.let {
+                    val city = CitySearchItem(
+                        name = "Moja lokalizacja",
+                        country = "",
+                        state = null,
+                        lat = it.latitude,
+                        lon = it.longitude
+                    )
+                    locationCity = city
+                    selectedCity = city
+                    viewModel.setSelectedCity(city)
+                    viewModel.getWeatherByCoordinates(city.lat, city.lon)
                 }
-            } catch (e: SecurityException) {
-                Log.e("HomeWeatherScreen", "Brak uprawnienia do lokalizacji", e)
             }
+        }
+    }
+
+    // Kiedy selectedCity się zmienia, ładuj pogodę dla tego miasta
+    LaunchedEffect(selectedCity) {
+        selectedCity?.let { city ->
+            viewModel.setSelectedCity(city)
+            viewModel.getWeatherByCoordinates(city.lat, city.lon)
         }
     }
 
@@ -82,18 +92,9 @@ fun HomeWeatherScreen(
     val favoriteCities by viewModel.favorites.collectAsState(emptyList())
     val forecast by viewModel.forecast.collectAsState()
     val units by viewModel.units.collectAsState()
-    val selectedFavoriteWeather by viewModel.selectedFavoriteWeather.collectAsState()
-
-    LaunchedEffect(units) {
-        weatherState?.let { weather ->
-            viewModel.getWeatherByCoordinates(weather.coord.lat, weather.coord.lon)
-        }
-    }
-
-    var selectedFavoriteCity by remember { mutableStateOf<CitySearchItem?>(null) }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
@@ -104,45 +105,43 @@ fun HomeWeatherScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Aktualna lokalizacja:",
+                text = "Aktualne miasto:",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary
             )
+            selectedCity?.let { city ->
+                Text(
+                    text = "${city.name}, ${city.country}",
+                    modifier = Modifier.clickable {
+                        onCityClear()
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         weatherState?.let { weather ->
-            Column {
-                WeatherDisplay(
-                    weather = weather,
-                    forecast = forecast,
-                    units = units,
-                    onFavoriteClick = {
-                        val city = weather.toCitySearchItem()
-                        if (favoriteCities.any { fav -> fav.lat == city.lat && fav.lon == city.lon }) {
-                            viewModel.removeFromFavorites(city)
-                        } else {
-                            viewModel.addToFavorites(city)
-                        }
-                    },
-                    isFavorite = favoriteCities.any { fav ->
-                        fav.lat == weather.coord.lat && fav.lon == weather.coord.lon
-                    },
-                    showOfflineWarning = false // albo: !weather.isFromApi (jeśli masz taką właściwość)
-                )
-
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-//                Text("Dodatkowe informacje:", style = MaterialTheme.typography.titleMedium)
-//                AdditionalCityWeatherDetails(weather = weather, units = units)
-            }
-        } ?: Text(
-            text = "Ładuję aktualną pogodę…",
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
+            WeatherDisplay(
+                weather = weather,
+                forecast = forecast,
+                units = units,
+                onFavoriteClick = {
+                    val city = weather.toCitySearchItem()
+                    if (favoriteCities.any { fav -> fav.lat == city.lat && fav.lon == city.lon }) {
+                        viewModel.removeFromFavorites(city)
+                    } else {
+                        viewModel.addToFavorites(city)
+                    }
+                },
+                isFavorite = favoriteCities.any { fav ->
+                    fav.lat == weather.coord.lat && fav.lon == weather.coord.lon
+                },
+                showOfflineWarning = false
+            )
+        } ?: Text("Ładuję aktualną pogodę…")
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -156,12 +155,7 @@ fun HomeWeatherScreen(
                 FavoriteCityItem(
                     city = city,
                     onClick = {
-                        selectedFavoriteCity = city
-                        viewModel.getWeatherForSelectedFavorite(city)
-                        navController.navigate("current/${city.lat}/${city.lon}") {
-                            popUpTo("home") { inclusive = false }
-                            launchSingleTop = true
-                        }
+                        selectedCity = city
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -169,16 +163,6 @@ fun HomeWeatherScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-//        selectedFavoriteCity?.let { city ->
-//            Text("Dane dodatkowe dla: ${city.name}", style = MaterialTheme.typography.titleMedium)
-//            selectedFavoriteWeather?.let { weather ->
-//                AdditionalCityWeatherDetails(weather = weather, units = units)
-//            } ?: Text("Ładuję dane pogodowe…")
-//        }
-//
-//        Spacer(modifier = Modifier.height(24.dp))
-
     }
 }
 
@@ -204,21 +188,5 @@ fun FavoriteCityItem(
             Text(text = "${city.name}, ${city.country}", style = MaterialTheme.typography.bodyLarge)
             Text(text = "Lat: ${city.lat}, Lon: ${city.lon}", style = MaterialTheme.typography.bodySmall)
         }
-    }
-}
-
-@Composable
-fun AdditionalCityWeatherDetails(
-    weather: WeatherResponse,
-    units: String
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text("Temperatura: ${weather.main.temp} ${if (units == "metric") "°C" else "°F"}", style = MaterialTheme.typography.bodyMedium)
-        Text("Ciśnienie: ${weather.main.pressure} hPa", style = MaterialTheme.typography.bodyMedium)
-        Text("Wilgotność: ${weather.main.humidity}%", style = MaterialTheme.typography.bodyMedium)
-        Text("Zachmurzenie: ${weather.clouds.all}%", style = MaterialTheme.typography.bodyMedium)
-        Text("Widoczność: ${weather.visibility / 1000.0} km", style = MaterialTheme.typography.bodyMedium)
-        Text("Wschód słońca: ${formatUnixTime(weather.sys.sunrise)}", style = MaterialTheme.typography.bodyMedium)
-        Text("Zachód słońca: ${formatUnixTime(weather.sys.sunset)}", style = MaterialTheme.typography.bodyMedium)
     }
 }

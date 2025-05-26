@@ -1,6 +1,5 @@
 package com.example.weatherapplication.ui.screens
 
-import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -8,7 +7,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import com.example.weatherapplication.data.model.CitySearchItem
 import com.example.weatherapplication.viewmodel.SettingsViewModel
 
@@ -16,7 +14,8 @@ import com.example.weatherapplication.viewmodel.SettingsViewModel
 fun SettingsScreen(
     settingsViewModel: SettingsViewModel,
     onRefreshWeatherClick: () -> Unit,
-    selectedCity: CitySearchItem?
+    selectedCity: CitySearchItem?,
+    modifier: Modifier = Modifier
 ) {
     val selectedUnits by settingsViewModel.units
     val refreshInterval by settingsViewModel.refreshInterval
@@ -24,61 +23,60 @@ fun SettingsScreen(
     val unitOptions = listOf("metric", "imperial", "standard")
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween
+            .padding(16.dp)
     ) {
-        Column {
-            Text("Jednostki miary", style = MaterialTheme.typography.titleMedium)
-            unitOptions.forEach { unit ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            settingsViewModel.setUnits(unit)
-                            onRefreshWeatherClick()
-                        }
-                        .padding(vertical = 8.dp)
-                ) {
-                    RadioButton(
-                        selected = unit == selectedUnits,
-                        onClick = {
-                            settingsViewModel.setUnits(unit)
-                            onRefreshWeatherClick()
-                        }
-                    )
-                    Text(text = if (unit == "metric") "Celsjusza (°C)" else if (unit=="imperial") "Fahrenheita (°F)" else "Kelwina (K)")
-                }
-            }
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text("Interwał odświeżania (minuty)", style = MaterialTheme.typography.titleMedium)
-                Slider(
-                    value = refreshInterval.toFloat(),
-                    onValueChange = { settingsViewModel.setRefreshInterval(it.toInt()) },
-                    valueRange = 1f..60f,
-                    steps = 59
-                )
-                Text("Wybrany interwał: $refreshInterval minut")
-            }
-
-            Button(
-                onClick = onRefreshWeatherClick,
+        Text("Jednostki miary", style = MaterialTheme.typography.titleMedium)
+        unitOptions.forEach { unit ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp)
+                    .clickable {
+                        settingsViewModel.setUnits(unit)
+                        onRefreshWeatherClick()
+                    }
+                    .padding(vertical = 8.dp)
             ) {
-                Text("Odśwież pogodę")
+                RadioButton(
+                    selected = unit == selectedUnits,
+                    onClick = {
+                        settingsViewModel.setUnits(unit)
+                        onRefreshWeatherClick()
+                    }
+                )
+                Text(text = getUnitLabel(unit))
             }
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Text("Interwał odświeżania (minuty)", style = MaterialTheme.typography.titleMedium)
+
+        Slider(
+            value = refreshInterval.toFloat(),
+            onValueChange = { settingsViewModel.setRefreshInterval(it.toInt()) },
+            valueRange = 1f..60f,
+            steps = 59
+        )
+        Text("Wybrany interwał: $refreshInterval minut")
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(onClick = {
+            settingsViewModel.refreshWeather()
+        }) {
+            Text("Odśwież pogodę")
+        }
+    }
+}
+
+private fun getUnitLabel(unit: String): String {
+    return when (unit) {
+        "metric" -> "Celsjusza (°C)"
+        "imperial" -> "Fahrenheita (°F)"
+        "standard" -> "Kelwina (K)"
+        else -> unit
     }
 }

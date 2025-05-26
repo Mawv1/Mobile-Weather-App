@@ -111,13 +111,11 @@ fun getWeatherIcon(iconCode: String?): Int {
 fun CurrentWeatherScreen(
     lat: Double,
     lon: Double,
-    navController: NavController,
-    viewModel: WeatherViewModel = viewModel()
+    navController: NavController?,
+    viewModel: WeatherViewModel
 ) {
-    val context = LocalContext.current
-
-    LaunchedEffect(key1 = lat, key2 = lon) {
-        Log.d("CurrentWeatherScreen", "Wywołanie getWeatherByCoordinates dla $lat, $lon")
+    // Załaduj dane przy zmianie współrzędnych
+    LaunchedEffect(lat, lon) {
         viewModel.getWeatherByCoordinates(lat, lon)
     }
 
@@ -126,23 +124,27 @@ fun CurrentWeatherScreen(
     val units by viewModel.units.collectAsState()
     val favorites by viewModel.favorites.collectAsState()
     val showOfflineWarning by viewModel.showOfflineWarning.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState(initial = false) // dodaj isLoading w VM jeśli potrzebujesz
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 16.dp, top = 64.dp, end = 16.dp, bottom = 16.dp)
+            .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (showOfflineWarning) {
             Text(
                 text = "Brak połączenia z internetem. Dane mogą być nieaktualne.",
-                color = Color.Red,
+                color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(8.dp)
             )
-        } else {
-            Spacer(modifier = Modifier.height(16.dp))
+        }
 
+        if (isLoading) {
+            Spacer(Modifier.height(32.dp))
+            CircularProgressIndicator()
+        } else {
             weatherState?.let { weather ->
                 val cityItem = CitySearchItem(
                     name = weather.name,
@@ -162,6 +164,7 @@ fun CurrentWeatherScreen(
                     weather = weather,
                     forecast = forecast,
                     units = units,
+                    isFavorite = isFavorite,
                     onFavoriteClick = {
                         if (isFavorite) {
                             viewModel.removeFromFavorites(cityItem)
@@ -169,11 +172,8 @@ fun CurrentWeatherScreen(
                             viewModel.addToFavorites(cityItem)
                         }
                     },
-                    showOfflineWarning = showOfflineWarning,
-                    isFavorite = isFavorite
+                    showOfflineWarning = showOfflineWarning
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
             } ?: Text("Brak danych pogodowych.")
         }
     }

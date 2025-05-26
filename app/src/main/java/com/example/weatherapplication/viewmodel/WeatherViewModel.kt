@@ -29,7 +29,10 @@ class WeatherViewModel(
     init {
         Log.d("WeatherViewModel", "Instance created: ${this.hashCode()}")
         networkMonitor.start()
-        startAutoRefresh()
+        viewModelScope.launch {
+            delay(100) // lub yield() lub Dispatchers.Main.immediate jeśli trzeba
+            startAutoRefresh()
+        }
     }
 
     // --- Stany ---
@@ -56,7 +59,7 @@ class WeatherViewModel(
         sharedPreferences.edit().putString("units", newUnits).apply()
         _units.value = newUnits
         repository.setUnits(newUnits)
-        refreshWeather()
+        refreshAllCitiesWeather()
     }
 
     // --- Odświeżanie co X minut (np. dla automatycznego odświeżania danych) ---
@@ -70,6 +73,8 @@ class WeatherViewModel(
     )
 //    val refreshInterval: StateFlow<Int> = _refreshInterval
     private var autoRefreshJob: Job? = null
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
 
     fun setRefreshInterval(newInterval: Int) {
         Log.d("WeatherViewModel", "setRefreshInterval called with: $newInterval")
@@ -98,8 +103,10 @@ class WeatherViewModel(
 
     // --- Zarządzanie miastem i pogodą ---
     fun setSelectedCity(city: CitySearchItem) {
+        if (_selectedCity.value == city) return  // nie rób nic, jeśli już wybrane
         Log.d("WeatherViewModel", "setSelectedCity: ${city.name} (${city.lat}, ${city.lon})")
-        _selectedCity.postValue(city)
+        _selectedCity.value = city
+//        fetchWeatherForSelectedCity()
     }
 
     fun getWeatherByCoordinates(lat: Double, lon: Double) {
@@ -111,12 +118,15 @@ class WeatherViewModel(
                 return@launch
             }
             try {
+                _isLoading.value = true
                 val weather = repository.getWeatherByCoordinates(lat, lon, currentUnits)
                 val forecastData = repository.getForecastByCoordinates(lat, lon, 5, currentUnits)
                 _weatherState.value = weather
                 _forecast.value = forecastData
             } catch (e: Exception) {
                 Log.e("WeatherViewModel", "Błąd pobierania pogody wg koordynatów", e)
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -130,7 +140,7 @@ class WeatherViewModel(
                     val intervalMinutes = _refreshInterval.value.takeIf { it > 0 } ?: 30
                     Log.d("WeatherViewModel", "Auto-refresh every $intervalMinutes minutes")
                     delay(intervalMinutes * 60 * 1000L)
-                    refreshWeather()
+                    refreshAllCitiesWeather()
                 } catch (e: Exception) {
                     Log.e("WeatherViewModel", "Error in auto-refresh loop", e)
                     delay(30 * 60 * 1000L) // fallback delay
@@ -223,6 +233,7 @@ class WeatherViewModel(
         Log.d("WeatherViewModel", "loadWeather called for city: ${city.name}, isOnline = ${isOnline.value}")
         viewModelScope.launch {
             try {
+                _isLoading.value = true
                 if (isOnline.value) {
                     val currentUnits = _units.value
                     val (weather, forecastList) = repository.refreshWeather(city, currentUnits)
@@ -247,25 +258,56 @@ class WeatherViewModel(
                 _weatherState.value = null
                 _forecast.value = emptyList()
                 _showOfflineWarning.value = true
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
-    fun refreshWeather() {
-        val city = selectedCity.value
-        if (city == null) {
-            Log.w("WeatherViewModel", "No city selected for refreshing weather")
-            return
-        }
+//    fun refreshWeather() {
+//        val city = selectedCity.value
+//        if (city == null) {
+//            Log.w("WeatherViewModel", "No city selected for refreshing weather")
+//            return
+//        }
+//        viewModelScope.launch {
+//            try {
+//                val (weather, forecastList) = repository.refreshWeather(city, _units.value)
+//                _weatherState.value = weather
+//                _forecast.value = forecastList
+//                _showOfflineWarning.value = false
+//            } catch (e: Exception) {
+//                Log.e("WeatherViewModel", "Error refreshing weather", e)
+//                _showOfflineWarning.value = true
+//            }
+//        }
+//    }
+
+    fun refreshAllCitiesWeather() {
         viewModelScope.launch {
-            try {
-                val (weather, forecastList) = repository.refreshWeather(city, _units.value)
-                _weatherState.value = weather
-                _forecast.value = forecastList
-                _showOfflineWarning.value = false
-            } catch (e: Exception) {
-                Log.e("WeatherViewModel", "Error refreshing weather", e)
-                _showOfflineWarning.value = true
+            // 1. Odśwież wybrane miasto (jeśli jest)
+            selectedCity.value?.let { city ->
+                try {
+                    val (weather, forecastList) = repository.refreshWeather(city, _units.value)
+                    _weatherState.value = weather
+                    _forecast.value = forecastList
+                    _showOfflineWarning.value = false
+                } catch (e: Exception) {
+                    Log.e("WeatherViewModel", "Error refreshing selected city weather", e)
+                    _showOfflineWarning.value = true
+                }
+            }
+
+            // 2. Odśwież ulubione miasta
+            favorites.value.forEach { city ->
+                try {
+                    val weather = repository.getWeatherByCoordinates(city.lat, city.lon, _units.value)
+                    // Tu możesz chcieć zaktualizować osobny StateFlow dla ulubionych, np. mapę miast -> pogoda
+                    // albo zapisać gdzieś wyniki, jeśli ich nie masz.
+                    // Np. wywołać favoritesRepo.updateFavoriteWeather(city, weather) jeśli masz taką metodę.
+                } catch (e: Exception) {
+                    Log.e("WeatherViewModel", "Error refreshing favorite city weather: ${city.name}", e)
+                }
             }
         }
     }
