@@ -14,14 +14,18 @@ class SettingsViewModel(
     private val _units = MutableStateFlow(weatherViewModel.getUnits())
     val units: StateFlow<String> = _units
 
-    private val _refreshInterval = MutableStateFlow(30)
+    private val _refreshInterval = MutableStateFlow(weatherViewModel.getRefreshInterval())
     val refreshInterval: StateFlow<Int> = _refreshInterval
 
     fun setUnits(newUnits: String) {
+        Log.d("SettingsViewModel", "setUnits called with: $newUnits")
         if (_units.value != newUnits) {
             Log.d("SettingsViewModel", "Changing units to $newUnits")
             weatherViewModel.setUnits(newUnits)
             _units.value = newUnits
+            viewModelScope.launch {
+                weatherViewModel.refreshWeather()
+            }
         }
     }
 

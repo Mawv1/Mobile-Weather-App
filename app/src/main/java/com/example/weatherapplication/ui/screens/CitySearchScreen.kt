@@ -11,19 +11,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.livedata.observeAsState
-import com.example.weatherapplication.data.model.CitySearchItem
-import com.example.weatherapplication.viewmodel.WeatherViewModel
+import com.example.weatherapplication.data.model.CityWithWeatherResponse
+import com.example.weatherapplication.viewmodel.SearchViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CitySearchScreen(
-    viewModel: WeatherViewModel,
-    onCitySelected: (CitySearchItem) -> Unit,
+    viewModel: SearchViewModel,
+    onCitySelected: (CityWithWeatherResponse) -> Unit,
     modifier: Modifier = Modifier.fillMaxSize()
 ) {
-    var query by remember { mutableStateOf("") }
-    val results by viewModel.citySearchResults.observeAsState(emptyList())
+    val query by viewModel.searchQuery.collectAsState()
+    val results by viewModel.searchResults.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     Column(
         modifier = modifier
@@ -38,7 +38,9 @@ fun CitySearchScreen(
         ) {
             TextField(
                 value = query,
-                onValueChange = { query = it },
+                onValueChange = {
+                    viewModel.onQueryChanged(it)
+                },
                 label = { Text("Wpisz nazwę miasta") },
                 modifier = Modifier
                     .weight(1f)
@@ -50,7 +52,7 @@ fun CitySearchScreen(
             )
             IconButton(
                 onClick = {
-                    viewModel.searchCity(query)
+                    viewModel.searchCitiesWithWeather()
                 }
             ) {
                 Icon(
@@ -62,15 +64,36 @@ fun CitySearchScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn {
-            items(results) { cityItem ->
-                Text(
-                    text = listOfNotNull(cityItem.name, cityItem.state, cityItem.country).joinToString(", "),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .clickable { onCitySelected(cityItem) }
-                )
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn {
+                items(results) { cityWithWeather: CityWithWeatherResponse ->
+                    val city = cityWithWeather.city
+                    val weather = cityWithWeather.weather
+                    val temp = weather?.main?.temp?.let { "${it.toInt()}°" } ?: "--"
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onCitySelected(cityWithWeather) }
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = listOfNotNull(city.name, city.state?.takeIf { it.isNotBlank() }, city.country)
+                                .joinToString(", "),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = temp,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         }
     }

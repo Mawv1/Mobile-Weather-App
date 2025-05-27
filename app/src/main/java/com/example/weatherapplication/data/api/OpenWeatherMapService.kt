@@ -35,16 +35,6 @@ interface OpenWeatherMapService {
         @Query("units") units: String
     ): WeatherResponse
 
-//    @GET("data/3.0/onecall")
-//    suspend fun getOneCallForecast(
-//        @Query("lat") lat: Double,
-//        @Query("lon") lon: Double,
-//        @Query("exclude") exclude: String = "current,minutely,hourly,alerts",
-//        @Query("appid") apiKey: String,
-//        @Query("units") units: String = "metric",
-//        @Query("lang") lang: String = "pl"
-//    ): OneCallResponse
-
     @GET("data/2.5/forecast")
     suspend fun getForecast(
         @Query("lat") lat: Double,

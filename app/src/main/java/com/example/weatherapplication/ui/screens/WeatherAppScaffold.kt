@@ -1,6 +1,5 @@
 package com.example.weatherapplication.ui.screens
 
-import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -15,10 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
-import com.example.weatherapplication.data.local.NetworkMonitor
-import com.example.weatherapplication.data.model.CitySearchItem
-import com.example.weatherapplication.data.repository.FavoritesRepository
-import com.example.weatherapplication.data.repository.WeatherRepository
+import com.example.weatherapplication.data.model.CityWithWeatherResponse
+import com.example.weatherapplication.viewmodel.SearchViewModel
 import com.example.weatherapplication.viewmodel.SettingsViewModel
 import com.example.weatherapplication.viewmodel.WeatherViewModel
 import com.example.weatherapplication.viewmodel.WeatherViewModelFactory
@@ -30,11 +27,12 @@ fun WeatherAppScaffold(viewModelFactory: WeatherViewModelFactory) {
 
     val weatherViewModel = viewModel<WeatherViewModel>(factory = viewModelFactory)
     val settingsViewModel = viewModel<SettingsViewModel>(factory = viewModelFactory)
+    val searchViewModel = viewModel<SearchViewModel>(factory = viewModelFactory)
 
     if (isTablet) {
-        TabletLayout(weatherViewModel, settingsViewModel)
+        TabletLayout(weatherViewModel, settingsViewModel, searchViewModel)
     } else {
-        PhoneLayout(weatherViewModel, settingsViewModel)
+        PhoneLayout(weatherViewModel, settingsViewModel, searchViewModel)
     }
 }
 
@@ -82,20 +80,25 @@ sealed class Screen(
 @Composable
 fun PhoneLayout(
     weatherViewModel: WeatherViewModel,
-    settingsViewModel: SettingsViewModel
+    settingsViewModel: SettingsViewModel,
+    searchViewmodel: SearchViewModel
 ) {
     val navController = rememberNavController()
     val screens = listOf(Screen.Home, Screen.Search, Screen.Settings)
 
-    var selectedCity by remember { mutableStateOf<CitySearchItem?>(null) }
+    var selectedCity by remember { mutableStateOf<CityWithWeatherResponse?>(null) }
+    val context = LocalContext.current
 
     // Synchronizacja z ViewModel po zmianie miasta
     LaunchedEffect(selectedCity) {
         selectedCity?.let { city ->
-            weatherViewModel.setSelectedCity(city)
-            weatherViewModel.getWeatherByCoordinates(city.lat, city.lon)
+            weatherViewModel.setSelectedCity(city, context)
+            weatherViewModel.getWeatherByCoordinates(city.city.lat, city.city.lon)
             // Po ustawieniu miasta przejdź do ekranu CurrentWeatherScreen
-            navController.navigate("current/${city.lat}/${city.lon}")
+            navController.navigate("current/${city.city.lat}/${city.city.lon}") {
+                launchSingleTop = true
+                restoreState = true
+            }
         }
     }
 
@@ -120,8 +123,8 @@ fun PhoneLayout(
             }
             composable(Screen.Search.route) {
                 CitySearchScreen(
-                    viewModel = weatherViewModel,
-                    onCitySelected = { city: CitySearchItem ->
+                    viewModel = searchViewmodel,
+                    onCitySelected = { city: CityWithWeatherResponse ->
                         selectedCity = city
                     }
                 )
@@ -137,7 +140,12 @@ fun PhoneLayout(
                 val lat = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull()
                 val lon = backStackEntry.arguments?.getString("lon")?.toDoubleOrNull()
                 if (lat != null && lon != null) {
-                    CurrentWeatherScreen(lat = lat, lon = lon, navController = navController, viewModel = weatherViewModel)
+                    CurrentWeatherScreen(
+                        lat = lat,
+                        lon = lon,
+                        navController = navController,
+                        viewModel = weatherViewModel
+                    )
                 }
             }
         }
@@ -147,14 +155,16 @@ fun PhoneLayout(
 @Composable
 fun TabletLayout(
     weatherViewModel: WeatherViewModel,
-    settingsViewModel: SettingsViewModel
+    settingsViewModel: SettingsViewModel,
+    searchViewModel: SearchViewModel
 ) {
-    var selectedCity by remember { mutableStateOf<CitySearchItem?>(null) }
+    var selectedCity by remember { mutableStateOf<CityWithWeatherResponse?>(null) }
+    val context = LocalContext.current
 
     LaunchedEffect(selectedCity) {
         selectedCity?.let { city ->
-            weatherViewModel.setSelectedCity(city)
-            weatherViewModel.getWeatherByCoordinates(city.lat, city.lon)
+            weatherViewModel.setSelectedCity(city, context)
+            weatherViewModel.getWeatherByCoordinates(city.city.lat, city.city.lon)
         }
     }
 
@@ -185,8 +195,8 @@ fun TabletLayout(
         ) {
             Text("Szukaj", style = MaterialTheme.typography.titleMedium)
             CitySearchScreen(
-                viewModel = weatherViewModel,
-                onCitySelected = { city: CitySearchItem ->
+                viewModel = searchViewModel,
+                onCitySelected = { city: CityWithWeatherResponse ->
                     selectedCity = city
                 },
                 modifier = Modifier.fillMaxSize()

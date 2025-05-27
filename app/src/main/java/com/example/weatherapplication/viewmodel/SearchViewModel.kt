@@ -40,11 +40,11 @@ class SearchViewModel(
                 val cityList = weatherRepository.searchCitiesByName(query)
                 val result = cityList.map { city ->
                     try {
-                        val weather = weatherRepository.getWeatherByCoordinates(city.lat, city.lon)
-                        CityWithWeatherResponse(city, weather)
+                        val weather = weatherRepository.getWeatherByCoordinates(city.city.lat, city.city.lon, weatherRepository.getCurrentUnits())
+                        CityWithWeatherResponse(city.city, weather)
                     } catch (e: Exception) {
-                        Log.w("SearchViewModel", "Weather fetch failed for ${city.name}: ${e.message}")
-                        CityWithWeatherResponse(city, null)
+                        Log.w("SearchViewModel", "Weather fetch failed for ${city.city.name}: ${e.message}")
+                        CityWithWeatherResponse(city.city, null)
                     }
                 }
                 _searchResults.value = result

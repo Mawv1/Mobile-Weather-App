@@ -7,11 +7,14 @@ import com.example.weatherapplication.data.api.OpenWeatherMapService
 import com.example.weatherapplication.data.local.WeatherCacheDao
 import com.example.weatherapplication.data.local.WeatherCacheEntry
 import com.example.weatherapplication.data.model.CitySearchItem
+import com.example.weatherapplication.data.model.CityWithWeatherResponse
 import com.example.weatherapplication.data.model.DailyForecast
 import com.example.weatherapplication.data.model.WeatherResponse
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -26,6 +29,9 @@ class WeatherRepository(
     private val moshi: Moshi,
     private val sharedPreferences: SharedPreferences,
 ) {
+    init {
+        Log.d("WeatherRepository", "WeatherRepository instance created: $this")
+    }
     companion object {
         private const val UNITS_KEY = "units_key"
         private const val DEFAULT_UNITS = "metric"
@@ -55,15 +61,44 @@ class WeatherRepository(
 
     private val api: OpenWeatherMapService = retrofit.create(OpenWeatherMapService::class.java)
 
-    suspend fun searchCitiesByName(cityName: String): List<CitySearchItem> {
+    suspend fun searchCitiesByName(cityName: String): List<CityWithWeatherResponse> {
         val response = api.getCities(cityName = cityName, limit = 5, apiKey = apiKey)
-        return response.map {
-            CitySearchItem(
-                name = it.name,
-                country = it.country,
-                state = it.state ?: "",
-                lat = it.lat,
-                lon = it.lon
+
+        return response.map { cityApiModel ->
+            val (weather, forecastResponse) = coroutineScope {
+                val weatherDeferred = async(Dispatchers.IO) {
+                    api.getWeatherByCoordinates(
+                        latitude = cityApiModel.lat,
+                        longitude = cityApiModel.lon,
+                        apiKey = apiKey,
+                        units = getCurrentUnits()
+                    )
+                }
+
+                val forecastDeferred = async(Dispatchers.IO) {
+                    api.getForecast(
+                        lat = cityApiModel.lat,
+                        lon = cityApiModel.lon,
+                        apiKey = apiKey,
+                        units = getCurrentUnits()
+                    )
+                }
+
+                weatherDeferred.await() to forecastDeferred.await()
+            }
+
+            val dailyForecastList = forecastResponse.toDailyForecastList()
+
+            CityWithWeatherResponse(
+                city = CitySearchItem(
+                    name = cityApiModel.name,
+                    country = cityApiModel.country,
+                    state = cityApiModel.state ?: "",
+                    lat = cityApiModel.lat,
+                    lon = cityApiModel.lon
+                ),
+                weather = weather,
+                forecast = dailyForecastList
             )
         }
     }
@@ -71,7 +106,7 @@ class WeatherRepository(
     suspend fun getWeatherByCoordinates(
         lat: Double,
         lon: Double,
-        units: String = getUnits()
+        units: String
     ): WeatherResponse {
         return api.getWeatherByCoordinates(
             latitude = lat,
@@ -85,7 +120,7 @@ class WeatherRepository(
         lat: Double,
         lon: Double,
         days: Int,
-        units: String = getUnits()
+        units: String
     ): List<DailyForecast> {
         val response = api.getForecast(lat = lat, lon = lon, units = units, apiKey = apiKey)
 
@@ -110,35 +145,51 @@ class WeatherRepository(
     }
 
     suspend fun getWeatherAndForecast(
-        city: CitySearchItem,
-        units: String = getUnits(),
+        cityWithWeather: CityWithWeatherResponse,
+        units: String = getCurrentUnits(),
         days: Int = 5
-    ): Pair<WeatherResponse, List<DailyForecast>>? = withContext(Dispatchers.IO) {
-        val cityId = getCityId(city)
-        val cacheTtl = refreshIntervalMinutes * 60 * 1000L
-        val cached = getCachedWeather(cityId, cacheTtl)
-
+    ): CityWithWeatherResponse? = withContext(Dispatchers.IO) {
+        val city = cityWithWeather.city
+        val cityId = getCityId(cityWithWeather)
+        val ttlMillis = refreshIntervalMinutes * 60 * 1000L
+        val cached = getCachedWeather(cityId, ttlMillis)
         if (cached != null) {
             Log.d("WeatherRepository", "Using cached data for ${city.name}")
-            return@withContext cached
+            return@withContext CityWithWeatherResponse(
+                city = city,
+                weather = cached.first,
+                forecast = cached.second
+            )
         }
 
-        return@withContext try {
+        try {
             Log.d("WeatherRepository", "Cache expired or missing, refreshing data for ${city.name}")
-            val result = refreshWeather(city, units, days)
-            saveLastSelectedCity(city)
-            result
+            val freshData = refreshWeather(cityWithWeather, units, days)
+            saveLastSelectedCity(cityWithWeather)
+            return@withContext CityWithWeatherResponse(
+                city = city,
+                weather = freshData.first,
+                forecast = freshData.second
+            )
         } catch (e: Exception) {
             Log.e("WeatherRepository", "Network error: ${e.message}")
-            getCachedWeather(cityId, Long.MAX_VALUE)
+            val fallback = getCachedWeather(cityId, Long.MAX_VALUE)
+            return@withContext fallback?.let {
+                CityWithWeatherResponse(
+                    city = city,
+                    weather = it.first,
+                    forecast = it.second
+                )
+            }
         }
     }
 
     suspend fun refreshWeather(
-        city: CitySearchItem,
-        units: String = getUnits(),
+        cityWithWeather: CityWithWeatherResponse,
+        units: String = getCurrentUnits(),
         days: Int = 5
     ): Pair<WeatherResponse, List<DailyForecast>> = withContext(Dispatchers.IO) {
+        val city = cityWithWeather.city
         val weather = getWeatherByCoordinates(city.lat, city.lon, units)
         val forecast = getForecastByCoordinates(city.lat, city.lon, days, units)
 
@@ -147,19 +198,19 @@ class WeatherRepository(
         val forecastJson = moshi.adapter<List<DailyForecast>>(listType).toJson(forecast)
 
         val entry = WeatherCacheEntry(
-            cityId = getCityId(city),
+            cityId = getCityId(cityWithWeather),
             timestamp = System.currentTimeMillis(),
             weatherJson = weatherJson,
             forecastJson = forecastJson
         )
 
         cacheDao.insert(entry)
-        saveLastSelectedCity(city)
+        saveLastSelectedCity(cityWithWeather)
         weather to forecast
     }
 
-    private fun getCityId(city: CitySearchItem): String {
-        return "${city.lat}_${city.lon}"
+    private fun getCityId(cityWithWeather: CityWithWeatherResponse): String {
+        return "${cityWithWeather.city.lat}_${cityWithWeather.city.lon}"
     }
 
     private suspend fun getCachedWeather(cityId: String, ttlMillis: Long): Pair<WeatherResponse, List<DailyForecast>>? {
@@ -175,14 +226,14 @@ class WeatherRepository(
         return weather to forecast
     }
 
-    fun saveLastSelectedCity(city: CitySearchItem) {
+    fun saveLastSelectedCity(cityWithWeather: CityWithWeatherResponse) {
         sharedPreferences.edit()
-            .putString(LAST_CITY_LAT_KEY, city.lat.toString())
-            .putString(LAST_CITY_LON_KEY, city.lon.toString())
+            .putString(LAST_CITY_LAT_KEY, cityWithWeather.city.lat.toString())
+            .putString(LAST_CITY_LON_KEY, cityWithWeather.city.lon.toString())
             .apply()
     }
 
-    fun getLastSelectedCity(): CitySearchItem? {
+    suspend fun getLastSelectedCity(): CityWithWeatherResponse? {
         val latStr = sharedPreferences.getString(LAST_CITY_LAT_KEY, null)
         val lonStr = sharedPreferences.getString(LAST_CITY_LON_KEY, null)
         if (latStr == null || lonStr == null) return null
@@ -190,17 +241,38 @@ class WeatherRepository(
         val lat = latStr.toDoubleOrNull() ?: return null
         val lon = lonStr.toDoubleOrNull() ?: return null
 
-        return CitySearchItem(
-            name = "Ostatnia lokalizacja",
-            country = "",
-            state = "",
-            lat = lat,
-            lon = lon
+        val forecast = withContext(Dispatchers.IO) {
+            getForecastByCoordinates(lat, lon, 5, getCurrentUnits())
+        }
+
+        return CityWithWeatherResponse(
+            city = CitySearchItem(
+                name = "Ostatnia lokalizacja",
+                country = "",
+                state = "",
+                lat = lat,
+                lon = lon
+            ),
+            weather = WeatherResponse(
+                name = "Ostatnia lokalizacja",
+                coord = WeatherResponse.Coord(lon, lat),
+                main = WeatherResponse.Main(0.0, 0, 0),
+                wind = WeatherResponse.Wind(0.0, 0),
+                weather = listOf(WeatherResponse.Weather("Brak danych", "", "")),
+                sys = WeatherResponse.Sys("", 0, 0),
+                clouds = WeatherResponse.Clouds(0),
+                visibility = 0
+            ),
+            forecast = forecast
         )
     }
+    fun setUnits(units: String) {
+        sharedPreferences.edit().putString(UNITS_KEY, units).apply()
+    }
 
-    fun getUnits(): String = sharedPreferences.getString(UNITS_KEY, DEFAULT_UNITS) ?: DEFAULT_UNITS
-    fun setUnits(units: String) = sharedPreferences.edit().putString(UNITS_KEY, units).apply()
+    fun getCurrentUnits(): String {
+        return sharedPreferences.getString(UNITS_KEY, DEFAULT_UNITS) ?: DEFAULT_UNITS
+    }
 
     fun getRefreshInterval(): Int = sharedPreferences.getInt(REFRESH_INTERVAL_KEY, DEFAULT_REFRESH_INTERVAL)
     fun setRefreshInterval(value: Int) {

@@ -2,7 +2,6 @@ package com.example.weatherapplication.ui.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -11,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,12 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.weatherapplication.data.model.CitySearchItem
-import com.example.weatherapplication.data.model.WeatherResponse
+import com.example.weatherapplication.data.model.CityWithWeatherResponse
 import com.example.weatherapplication.ui.composables.WeatherDisplay
 import com.example.weatherapplication.viewmodel.WeatherViewModel
-//import com.example.weatherapplication.utils.formatUnixTime
 import com.google.android.gms.location.LocationServices
-
 
 @Composable
 fun HomeWeatherScreen(
@@ -46,20 +42,22 @@ fun HomeWeatherScreen(
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        permissionGranted = granted
-    }
+    ) { granted -> permissionGranted = granted }
 
-    var selectedCity by remember { mutableStateOf<CitySearchItem?>(null) }
-    var locationCity by remember { mutableStateOf<CitySearchItem?>(null) }
+    val selectedCity by viewModel.selectedCity.collectAsState()
+    val weatherState by viewModel.weatherState.collectAsState()
+    val favoriteCities by viewModel.favorites.collectAsState(emptyList())
+    val forecast by viewModel.forecast.collectAsState()
+    val units by viewModel.units.collectAsState()
 
+    // Request location permission
     LaunchedEffect(Unit) {
         if (!permissionGranted) {
             launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
-    // Ustaw lokalizację tylko jeśli selectedCity jest null (czyli nie wybrano miasta z ulubionych/wyszukiwania)
+    // Get location if granted and no city selected
     LaunchedEffect(permissionGranted) {
         if (permissionGranted && selectedCity == null) {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
@@ -71,27 +69,23 @@ fun HomeWeatherScreen(
                         lat = it.latitude,
                         lon = it.longitude
                     )
-                    locationCity = city
-                    selectedCity = city
-                    viewModel.setSelectedCity(city)
-                    viewModel.getWeatherByCoordinates(city.lat, city.lon)
+                    val cityWithWeather = CityWithWeatherResponse(
+                        city = city,
+                        weather = null,
+                        forecast = emptyList()
+                    )
+                    viewModel.setSelectedCity(cityWithWeather, context)
                 }
             }
         }
     }
 
-    // Kiedy selectedCity się zmienia, ładuj pogodę dla tego miasta
-    LaunchedEffect(selectedCity) {
+    // Fetch weather on city or unit change
+    LaunchedEffect(selectedCity?.city?.lat, selectedCity?.city?.lon, units) {
         selectedCity?.let { city ->
-            viewModel.setSelectedCity(city)
-            viewModel.getWeatherByCoordinates(city.lat, city.lon)
+            viewModel.getWeatherByCoordinates(city.city.lat, city.city.lon)
         }
     }
-
-    val weatherState by viewModel.weatherState.collectAsState()
-    val favoriteCities by viewModel.favorites.collectAsState(emptyList())
-    val forecast by viewModel.forecast.collectAsState()
-    val units by viewModel.units.collectAsState()
 
     Column(
         modifier = modifier
@@ -99,6 +93,7 @@ fun HomeWeatherScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
+        // Selected city
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -111,10 +106,8 @@ fun HomeWeatherScreen(
             )
             selectedCity?.let { city ->
                 Text(
-                    text = "${city.name}, ${city.country}",
-                    modifier = Modifier.clickable {
-                        onCityClear()
-                    },
+                    text = "${city.city.name}${if (city.city.country.isNotEmpty()) ", ${city.city.country}" else ""}",
+                    modifier = Modifier.clickable { onCityClear() },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -123,40 +116,57 @@ fun HomeWeatherScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        weatherState?.let { weather ->
+        // Weather display
+        if (weatherState != null) {
             WeatherDisplay(
-                weather = weather,
+                weather = weatherState!!,
                 forecast = forecast,
                 units = units,
                 onFavoriteClick = {
-                    val city = weather.toCitySearchItem()
-                    if (favoriteCities.any { fav -> fav.lat == city.lat && fav.lon == city.lon }) {
-                        viewModel.removeFromFavorites(city)
+                    val city = weatherState!!.toCitySearchItem()
+                    val cityWithWeather = CityWithWeatherResponse(
+                        city = city,
+                        weather = weatherState,
+                        forecast = forecast
+                    )
+                    if (favoriteCities.any { fav -> fav.city.lat == city.lat && fav.city.lon == city.lon }) {
+                        viewModel.removeFromFavorites(cityWithWeather)
                     } else {
-                        viewModel.addToFavorites(city)
+                        viewModel.addToFavorites(cityWithWeather)
                     }
                 },
-                isFavorite = favoriteCities.any { fav ->
-                    fav.lat == weather.coord.lat && fav.lon == weather.coord.lon
+                isFavorite = favoriteCities.any {
+                    it.city.lat == weatherState!!.coord.lat && it.city.lon == weatherState!!.coord.lon
                 },
                 showOfflineWarning = false
             )
-        } ?: Text("Ładuję aktualną pogodę…")
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Ładuję aktualną pogodę…",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Favorites
         Text(text = "Ulubione miasta", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(8.dp))
 
         if (favoriteCities.isEmpty()) {
             Text("Brak ulubionych miast.")
         } else {
-            favoriteCities.forEach { city ->
+            favoriteCities.forEach { favorite ->
                 FavoriteCityItem(
-                    city = city,
-                    onClick = {
-                        selectedCity = city
-                    }
+                    city = favorite.city,
+                    onClick = { viewModel.setSelectedCity(favorite, context) }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }

@@ -24,6 +24,27 @@ data class WeatherResponse(
             lon = this.coord.lon
         )
     }
+
+    fun toCityWithWeatherResponse(): CityWithWeatherResponse {
+        return CityWithWeatherResponse(
+            city = toCitySearchItem(),
+            weather = this,
+            forecast = emptyList() // Forecast is not included in this response
+        )
+    }
+
+    @JsonClass(generateAdapter = true)
+    data class Coord(val lon: Double, val lat: Double)
+    @JsonClass(generateAdapter = true)
+    data class Main(val temp: Double, val pressure: Int, val humidity: Int)
+    @JsonClass(generateAdapter = true)
+    data class Wind(val speed: Double, val deg: Int)
+    @JsonClass(generateAdapter = true)
+    data class Weather(val description: String, val icon: String, val main: String)
+    @JsonClass(generateAdapter = true)
+    data class Sys(val country: String, val sunrise: Int, val sunset: Int)
+    @JsonClass(generateAdapter = true)
+    data class Clouds(val all: Int)
 }
 
 @JsonClass(generateAdapter = true)

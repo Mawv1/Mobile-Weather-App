@@ -14,12 +14,19 @@ class WeatherViewModelFactory(
     private val sharedPreferences: SharedPreferences
 ) : ViewModelProvider.Factory {
 
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        val weatherViewModel = WeatherViewModel(repo, favoritesRepo, networkMonitor, sharedPreferences)
+    private val weatherViewModel: WeatherViewModel by lazy {
+        WeatherViewModel(repo, favoritesRepo, networkMonitor, sharedPreferences)
+    }
 
+    private val searchViewModel: SearchViewModel by lazy {
+        SearchViewModel(repo)
+    }
+
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
             modelClass.isAssignableFrom(WeatherViewModel::class.java) -> weatherViewModel as T
             modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(weatherViewModel) as T
+            modelClass.isAssignableFrom(SearchViewModel::class.java) -> searchViewModel as T
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }
