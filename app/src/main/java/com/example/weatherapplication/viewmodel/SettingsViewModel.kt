@@ -6,9 +6,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.example.weatherapplication.data.local.NetworkMonitor
 
 class SettingsViewModel(
-    private val weatherViewModel: WeatherViewModel
+    private val weatherViewModel: WeatherViewModel,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     private val _units = MutableStateFlow(weatherViewModel.getUnits())
@@ -17,10 +19,15 @@ class SettingsViewModel(
     private val _refreshInterval = MutableStateFlow(weatherViewModel.getRefreshInterval())
     val refreshInterval: StateFlow<Int> = _refreshInterval
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage
+
     fun setUnits(newUnits: String) {
-        Log.d("SettingsViewModel", "setUnits called with: $newUnits")
         if (_units.value != newUnits) {
-            Log.d("SettingsViewModel", "Changing units to $newUnits")
+            if (!networkMonitor.isOnline.value) {
+                _errorMessage.value = "Brak połączenia – nie można zmienić jednostek"
+                return
+            }
             weatherViewModel.setUnits(newUnits)
             _units.value = newUnits
             viewModelScope.launch {
@@ -38,7 +45,10 @@ class SettingsViewModel(
     }
 
     fun refreshWeather() {
-        Log.d("SettingsViewModel", "Manual weather refresh requested")
+        if (!networkMonitor.isOnline.value) {
+            _errorMessage.value = "Brak połączenia – nie można odświeżyć pogody"
+            return
+        }
         weatherViewModel.refreshAllCitiesWeather()
     }
 }

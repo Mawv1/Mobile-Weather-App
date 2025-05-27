@@ -6,12 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [WeatherCacheEntry::class],
-    version = 1,
+    entities = [WeatherCacheEntry::class, FavoriteCityEntity::class],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun weatherCacheDao(): WeatherCacheDao
+    abstract fun favoriteCityDao(): FavoriteCityDao
 
     companion object {
         @Volatile
@@ -23,8 +24,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "weather_app_db"
-                ).fallbackToDestructiveMigration()
-                .build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

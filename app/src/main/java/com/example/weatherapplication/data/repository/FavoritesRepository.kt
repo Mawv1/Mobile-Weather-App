@@ -4,12 +4,15 @@ import android.content.Context
 import com.example.weatherapplication.data.local.FavoritesStore
 import com.example.weatherapplication.data.model.CitySearchItem
 import com.example.weatherapplication.data.model.CityWithWeatherResponse
+import com.example.weatherapplication.data.model.DailyForecast
+import com.example.weatherapplication.data.model.WeatherResponse
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.File
 
 class FavoritesRepository(
     private val context: Context,
@@ -59,5 +62,31 @@ class FavoritesRepository(
 
     suspend fun updateFavorites(list: List<CityWithWeatherResponse>) {
         FavoritesStore.saveRawFavorites(context, adapter.toJson(list))
+    }
+
+    suspend fun getFavorite(city: CityWithWeatherResponse): CityWithWeatherResponse {
+        return favoritesFlow.first().firstOrNull {
+            it.city.lat == city.city.lat && it.city.lon == city.city.lon
+        } ?: CityWithWeatherResponse(city = city.city, weather = city.weather)
+    }
+
+    suspend fun updateFavoriteWithWeather(city: CitySearchItem, weather: WeatherResponse, forecast: List<DailyForecast>) {
+        val currentFavorites = favoritesFlow.first().toMutableList()
+        val index = currentFavorites.indexOfFirst { it.city == city }
+        if (index != -1) {
+            currentFavorites[index] = CityWithWeatherResponse(city, weather, forecast)
+            FavoritesStore.saveRawFavorites(context, adapter.toJson(currentFavorites))
+        }
+    }
+
+    fun saveFavoritesToCache(favorites: List<CityWithWeatherResponse>) {
+        val file = File(context.cacheDir, "favorites_cache.json")
+        file.writeText(adapter.toJson(favorites))
+    }
+
+    fun loadFavoritesFromCache(): List<CityWithWeatherResponse> {
+        val file = File(context.cacheDir, "favorites_cache.json")
+        if (!file.exists()) return emptyList()
+        return adapter.fromJson(file.readText()) ?: emptyList()
     }
 }

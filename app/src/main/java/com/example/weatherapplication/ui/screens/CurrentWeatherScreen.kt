@@ -3,10 +3,14 @@ package com.example.weatherapplication.ui.screens
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -82,7 +86,7 @@ fun WeatherInfoCard(
             Spacer(modifier = Modifier.height(8.dp))
             IconButton(onClick = onFavoriteClick) {
                 Icon(
-                    imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                    imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = if (isFavorite) "Usuń z ulubionych" else "Dodaj do ulubionych",
                     tint = if (isFavorite) Color.Yellow else MaterialTheme.colorScheme.primary
                 )
@@ -128,6 +132,7 @@ fun CurrentWeatherScreen(
     val favorites by viewModel.favorites.collectAsState()
     val showOfflineWarning by viewModel.showOfflineWarning.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState(initial = false)
+    val isOffline by viewModel.isOffline.collectAsState()
 
     LaunchedEffect(lat, lon, units) {
         viewModel.getWeatherByCoordinates(lat, lon)
@@ -140,12 +145,18 @@ fun CurrentWeatherScreen(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (showOfflineWarning) {
+        if (isOffline) {
             Text(
                 text = "Brak połączenia z internetem. Dane mogą być nieaktualne.",
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(8.dp)
             )
+            LazyColumn {
+                items(favorites) { cityWithWeather ->
+                    Text(text = "Miasto: ${cityWithWeather.city.name}")
+                    Text(text = "Temperatura: ${cityWithWeather.weather?.main?.temp ?: "Brak danych"}")
+                }
+            }
         }
 
         if (isLoading) {

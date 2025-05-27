@@ -2,6 +2,7 @@ package com.example.weatherapplication.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -75,6 +76,7 @@ sealed class Screen(
     object Home : Screen("home", "Home", Icons.Filled.Home)
     object Search : Screen("search", "Szukaj", Icons.Filled.Search)
     object Settings : Screen("settings", "Ustawienia", Icons.Filled.Settings)
+    object Favorites : Screen("favorites", "Ulubione", Icons.Filled.Favorite) // Dodano ekran ulubionych miast
 }
 
 @Composable
@@ -84,7 +86,7 @@ fun PhoneLayout(
     searchViewmodel: SearchViewModel
 ) {
     val navController = rememberNavController()
-    val screens = listOf(Screen.Home, Screen.Search, Screen.Settings)
+    val screens = listOf(Screen.Home, Screen.Search, Screen.Favorites, Screen.Settings)
 
     var selectedCity by remember { mutableStateOf<CityWithWeatherResponse?>(null) }
     val context = LocalContext.current
@@ -92,12 +94,11 @@ fun PhoneLayout(
     // Synchronizacja z ViewModel po zmianie miasta
     LaunchedEffect(selectedCity) {
         selectedCity?.let { city ->
-            weatherViewModel.setSelectedCity(city, context)
+            weatherViewModel.setSelectedCity(city)
             weatherViewModel.getWeatherByCoordinates(city.city.lat, city.city.lon)
-            // Po ustawieniu miasta przejdź do ekranu CurrentWeatherScreen
-            navController.navigate("current/${city.city.lat}/${city.city.lon}") {
-                launchSingleTop = true
-                restoreState = true
+            // przjescie na homescreen i usuniecie danych z wyszukiwarki
+            navController.navigate(Screen.Home.route) {
+                popUpTo(Screen.Search.route) { inclusive = true }
             }
         }
     }
@@ -136,18 +137,27 @@ fun PhoneLayout(
                     selectedCity = selectedCity
                 )
             }
-            composable("current/{lat}/{lon}") { backStackEntry ->
-                val lat = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull()
-                val lon = backStackEntry.arguments?.getString("lon")?.toDoubleOrNull()
-                if (lat != null && lon != null) {
-                    CurrentWeatherScreen(
-                        lat = lat,
-                        lon = lon,
-                        navController = navController,
-                        viewModel = weatherViewModel
-                    )
-                }
+            // ekran z ulubionymi miastami
+            composable(Screen.Favorites.route) {
+                FavoritesElement(
+                    viewModel = weatherViewModel,
+                    onCitySelected = { city: CityWithWeatherResponse ->
+                        selectedCity = city
+                    }
+                )
             }
+//            composable("current/{lat}/{lon}") { backStackEntry ->
+//                val lat = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull()
+//                val lon = backStackEntry.arguments?.getString("lon")?.toDoubleOrNull()
+//                if (lat != null && lon != null) {
+//                    CurrentWeatherScreen(
+//                        lat = lat,
+//                        lon = lon,
+//                        navController = navController,
+//                        viewModel = weatherViewModel
+//                    )
+//                }
+//            }
         }
     }
 }
@@ -163,7 +173,7 @@ fun TabletLayout(
 
     LaunchedEffect(selectedCity) {
         selectedCity?.let { city ->
-            weatherViewModel.setSelectedCity(city, context)
+            weatherViewModel.setSelectedCity(city)
             weatherViewModel.getWeatherByCoordinates(city.city.lat, city.city.lon)
         }
     }
@@ -199,7 +209,13 @@ fun TabletLayout(
                 onCitySelected = { city: CityWithWeatherResponse ->
                     selectedCity = city
                 },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                favoritesContent = {
+                    FavoritesElement(
+                        viewModel = weatherViewModel,
+                        onCitySelected = { city -> selectedCity = city }
+                    )
+                }
             )
         }
         Column(

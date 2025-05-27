@@ -20,6 +20,7 @@ fun SettingsScreen(
 ) {
     val selectedUnits by settingsViewModel.units.collectAsState()
     val refreshInterval by settingsViewModel.refreshInterval.collectAsState()
+    val errorMessage by settingsViewModel.errorMessage.collectAsState()
 
     val unitOptions = listOf("metric", "imperial", "standard")
 
@@ -61,6 +62,16 @@ fun SettingsScreen(
         }) {
             Text("Odśwież pogodę")
         }
+        if (!errorMessage.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = errorMessage!!,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
     }
 }
 

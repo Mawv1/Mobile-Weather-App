@@ -14,6 +14,7 @@ import com.example.weatherapplication.data.repository.FavoritesRepository
 import com.example.weatherapplication.data.repository.WeatherRepository
 import com.example.weatherapplication.ui.screens.WeatherAppScaffold
 import com.example.weatherapplication.ui.theme.WeatherApplicationTheme
+import com.example.weatherapplication.viewmodel.WeatherViewModel
 import com.example.weatherapplication.viewmodel.WeatherViewModelFactory
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -22,6 +23,9 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var networkMonitor: NetworkMonitor
     private lateinit var viewModelFactory: WeatherViewModelFactory
+
+    private lateinit var weatherViewModel: WeatherViewModel
+    private lateinit var appLifecycleObserver: AppLifecycleObserver
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +58,12 @@ class MainActivity : ComponentActivity() {
             sharedPreferences = sharedPreferences
         )
 
+
+        weatherViewModel = viewModelFactory.create(WeatherViewModel::class.java)
+        appLifecycleObserver = AppLifecycleObserver(weatherViewModel)
+
+        lifecycle.addObserver(appLifecycleObserver)
+
         enableEdgeToEdge()
 
         setContent {
@@ -62,7 +72,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    WeatherAppScaffold(viewModelFactory = viewModelFactory) // <- to jest Twój główny ekran z bottom navigation
+                    WeatherAppScaffold(viewModelFactory = viewModelFactory)
                 }
             }
         }

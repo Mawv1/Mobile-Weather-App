@@ -19,17 +19,20 @@ import com.example.weatherapplication.viewmodel.SearchViewModel
 fun CitySearchScreen(
     viewModel: SearchViewModel,
     onCitySelected: (CityWithWeatherResponse) -> Unit,
-    modifier: Modifier = Modifier.fillMaxSize()
+    modifier: Modifier = Modifier,
+    favoritesContent: @Composable (() -> Unit)? = null
 ) {
     val query by viewModel.searchQuery.collectAsState()
     val results by viewModel.searchResults.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Search bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -38,9 +41,7 @@ fun CitySearchScreen(
         ) {
             TextField(
                 value = query,
-                onValueChange = {
-                    viewModel.onQueryChanged(it)
-                },
+                onValueChange = { viewModel.onQueryChanged(it) },
                 label = { Text("Wpisz nazwę miasta") },
                 modifier = Modifier
                     .weight(1f)
@@ -50,11 +51,7 @@ fun CitySearchScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
-            IconButton(
-                onClick = {
-                    viewModel.searchCitiesWithWeather()
-                }
-            ) {
+            IconButton(onClick = { viewModel.searchCitiesWithWeather() }) {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Szukaj miasta"
@@ -64,13 +61,23 @@ fun CitySearchScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Wyniki wyszukiwania
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else {
-            LazyColumn {
-                items(results) { cityWithWeather: CityWithWeatherResponse ->
+        } else if (!errorMessage.isNullOrBlank()) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
+            }
+        } else if (results.isNotEmpty()) {
+            Text("Wyniki wyszukiwania", style = MaterialTheme.typography.titleMedium)
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 200.dp) // ograniczenie wysokości
+            ) {
+                items(results) { cityWithWeather ->
                     val city = cityWithWeather.city
                     val weather = cityWithWeather.weather
                     val temp = weather?.main?.temp?.let { "${it.toInt()}°" } ?: "--"
@@ -78,23 +85,33 @@ fun CitySearchScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onCitySelected(cityWithWeather) }
+                            .clickable {
+                                onCitySelected(cityWithWeather)
+                                viewModel.clearSearch()
+                            }
                             .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = listOfNotNull(city.name, city.state?.takeIf { it.isNotBlank() }, city.country)
-                                .joinToString(", "),
+                            text = listOfNotNull(
+                                city.name,
+                                city.state?.takeIf { it.isNotBlank() },
+                                city.country
+                            ).joinToString(", "),
                             modifier = Modifier.weight(1f)
                         )
-                        Text(
-                            text = temp,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Text(text = temp, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Ulubione miasta – ZAWSZE WIDOCZNE
+        if (favoritesContent != null) {
+            favoritesContent()
         }
     }
 }

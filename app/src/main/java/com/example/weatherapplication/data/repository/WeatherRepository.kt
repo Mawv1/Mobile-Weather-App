@@ -111,7 +111,7 @@ class WeatherRepository(
         return api.getWeatherByCoordinates(
             latitude = lat,
             longitude = lon,
-            units = if (units in listOf("metric", "imperial")) units else DEFAULT_UNITS,
+            units = if (units in listOf("metric", "imperial", "standard")) units else DEFAULT_UNITS,
             apiKey = apiKey
         )
     }
